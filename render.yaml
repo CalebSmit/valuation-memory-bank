@@ -3,7 +3,7 @@ services:
     name: valuation-memory-bank-api
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build:server
+    buildCommand: npm install && npm rebuild better-sqlite3 && npm run build:server
     startCommand: sh scripts/start-production.sh
     envVars:
       - key: NODE_ENV

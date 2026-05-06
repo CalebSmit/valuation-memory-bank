@@ -8,6 +8,7 @@
     "build": "npx tsx script/build.ts",
     "build:client": "vite build",
     "build:server": "esbuild server/index.ts --platform=node --bundle --format=cjs --outfile=dist/index.cjs --define:process.env.NODE_ENV='\"production\"' --minify --external:better-sqlite3 --external:drizzle-kit --external:vite --external:tsx --external:typescript --external:vitest",
+    "rebuild:sqlite": "npm rebuild better-sqlite3",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push",
