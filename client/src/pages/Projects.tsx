@@ -95,6 +95,10 @@ export default function ProjectsPage() {
       resetForm();
       toast({ title: "Project created" });
     },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : "Could not create project";
+      toast({ title: "Create failed", description: message, variant: "destructive" });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -103,6 +107,10 @@ export default function ProjectsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       setDeleteId(null);
       toast({ title: "Project deleted" });
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : "Could not delete project";
+      toast({ title: "Delete failed", description: message, variant: "destructive" });
     },
   });
 

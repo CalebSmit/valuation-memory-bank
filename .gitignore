@@ -1,8 +1,8 @@
 node_modules/
 .vite/
 
-# Client build output (not needed in repo)
-dist/public/
+# Build output — Render and Cloudflare both build from source
+dist/
 
 # SQLite database files — never commit; exposes demo data at rest
 data.db

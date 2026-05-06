@@ -198,10 +198,12 @@ Each project has a structured outline of ~117 standard valuation report sections
 
 ## Deployment Notes
 
-- **Cloudflare Pages** auto-builds and deploys on every push to `main` (build command `npm run build`, output `dist/public`). After pushing user-facing changes, verify the new build appears in the Cloudflare dashboard and the live app reflects the change.
-- **Cloudflare D1** is the production database. Schema changes require running the schema SQL against D1 via `wrangler d1 execute`.
-- **Render** (`render.yaml`) is configured as a fallback host.
-- Required production env vars: `NODE_ENV=production`, `AUTH_ENABLED=false`, `AI_ENABLED=false` (MVP — no live AI).
+The app is a single Express server that serves both the React frontend (from `dist/public`) and the API. It must be deployed somewhere that can run a Node process — Cloudflare Pages alone cannot host the backend, so the live app runs on **Render**.
+
+- **Render** (`render.yaml`) is the primary host. On every push to `main`, Render runs `npm install && npm run build` (which compiles the Vite frontend into `dist/public` and bundles the server into `dist/index.cjs`), then `node dist/index.cjs`. The same Express process serves `/api/*` and the SPA. The DB lives on Render's persistent disk at `/data/local.db` (auto-initialized via `init-db.ts`).
+- **Cloudflare Pages** is configured but **frontend-only** — it cannot run the API. Do not rely on Cloudflare Pages for the live deploy unless the frontend is reconfigured to call the Render backend via `VITE_API_URL` (currently every API call in `api.ts` uses bare relative paths, so this would require code changes).
+- **`dist/` is gitignored** — no build artifacts are committed. Both Render and Cloudflare build from source on push. Do not commit `dist/index.cjs` even if a deploy is failing — fix the build instead.
+- Required production env vars (set in `render.yaml`): `NODE_ENV=production`, `AUTH_ENABLED=false`, `AI_ENABLED=false` (MVP — no live AI), `PORT=10000`.
 
 ---
 
