@@ -6,9 +6,9 @@ import path from "node:path";
 export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "public");
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
-    );
+    // No static client build present — API-only mode (frontend served from Cloudflare Pages)
+    console.log(`[static] No dist/public found — running in API-only mode (frontend on CDN)`);
+    return;
   }
 
   app.use(express.static(distPath));
