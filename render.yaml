@@ -3,8 +3,8 @@ services:
     name: valuation-memory-bank-api
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build:server && npx tsx scripts/seed.ts
-    startCommand: node dist/index.cjs
+    buildCommand: npm install && npm run build:server
+    startCommand: sh scripts/start-production.sh
     envVars:
       - key: NODE_ENV
         value: production
