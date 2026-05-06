@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: valuation-memory-bank-api
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm install && npm run build:server
+    startCommand: node dist/index.cjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: AUTH_ENABLED
+        value: false
+      - key: AI_ENABLED
+        value: false
+    healthCheckPath: /api/me
