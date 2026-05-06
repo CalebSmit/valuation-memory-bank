@@ -30,11 +30,20 @@ const allowlist = [
   "zod-validation-error",
 ];
 
+// `--server-only` skips the Vite client build — used by Render, where the
+// frontend is served from Cloudflare Pages. The Express server detects the
+// missing dist/public and runs in API-only mode (see server/static.ts).
+const serverOnly = process.argv.includes("--server-only");
+
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
 
-  console.log("building client...");
-  await viteBuild();
+  if (!serverOnly) {
+    console.log("building client...");
+    await viteBuild();
+  } else {
+    console.log("server-only build — skipping client (frontend hosted elsewhere)");
+  }
 
   console.log("building server...");
   const pkg = JSON.parse(await readFile("package.json", "utf-8"));
