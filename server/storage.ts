@@ -8,7 +8,7 @@ import {
   referenceCaseArtifacts, assumptions, sources, evidenceLinks,
   externalModelReferences, supportMemos, qaItems, notes,
   lessonsLearned, tags, tagLinks, favorites, activityLog,
-  aiTasks, files,
+  aiTasks, files, reportSectionTemplates, projectReportSections,
   type User, type InsertUser,
   type Workspace, type InsertWorkspace,
   type WorkspaceMembership, type InsertWorkspaceMembership,
@@ -34,6 +34,8 @@ import {
   type ActivityLog, type InsertActivityLog,
   type AiTask, type InsertAiTask,
   type File, type InsertFile,
+  type ReportSectionTemplate, type InsertReportSectionTemplate,
+  type ProjectReportSection, type InsertProjectReportSection,
 } from "../shared/schema";
 
 // Helper
@@ -208,6 +210,17 @@ export interface IStorage {
   createFile(data: InsertFile): File;
   updateFile(id: string, data: Partial<InsertFile>): File | undefined;
   deleteFile(id: string): boolean;
+
+  // Report section templates (read-only catalog)
+  getReportSectionTemplates(): ReportSectionTemplate[];
+  getReportSectionTemplate(slug: string): ReportSectionTemplate | undefined;
+
+  // Project report sections (per-project narrative + linked items)
+  getProjectReportSections(projectId: string): ProjectReportSection[];
+  getProjectReportSection(projectId: string, templateSlug: string): ProjectReportSection | undefined;
+  upsertProjectReportSection(data: InsertProjectReportSection): ProjectReportSection;
+  deleteProjectReportSection(projectId: string, templateSlug: string): boolean;
+  getProjectReportProgress(projectId: string): { totalSections: number; counts: Record<string, number> };
 
   // Search
   search(q: string, workspaceId?: string, projectId?: string, type?: string, includeReferenceCases?: boolean): SearchResult[];
@@ -767,6 +780,60 @@ export class DatabaseStorage implements IStorage {
   deleteFile(fId: string) {
     db.delete(files).where(eq(files.id, fId)).run();
     return true;
+  }
+
+  // Report section templates (read-only seed catalog)
+  getReportSectionTemplates() {
+    return db.select().from(reportSectionTemplates).orderBy(asc(reportSectionTemplates.defaultOrder)).all();
+  }
+  getReportSectionTemplate(slug: string) {
+    return db.select().from(reportSectionTemplates).where(eq(reportSectionTemplates.slug, slug)).get();
+  }
+
+  // Project report sections
+  getProjectReportSections(projectId: string) {
+    return db.select().from(projectReportSections)
+      .where(eq(projectReportSections.projectId, projectId))
+      .all();
+  }
+  getProjectReportSection(projectId: string, templateSlug: string) {
+    return db.select().from(projectReportSections)
+      .where(and(
+        eq(projectReportSections.projectId, projectId),
+        eq(projectReportSections.templateSlug, templateSlug),
+      ))
+      .get();
+  }
+  upsertProjectReportSection(data: InsertProjectReportSection) {
+    const existing = this.getProjectReportSection(data.projectId, data.templateSlug);
+    if (existing) {
+      return db.update(projectReportSections)
+        .set({ ...data, updatedAt: now() })
+        .where(eq(projectReportSections.id, existing.id))
+        .returning().get()!;
+    }
+    return db.insert(projectReportSections)
+      .values({ ...data, id: id(), createdAt: now(), updatedAt: now() })
+      .returning().get()!;
+  }
+  deleteProjectReportSection(projectId: string, templateSlug: string) {
+    const existing = this.getProjectReportSection(projectId, templateSlug);
+    if (!existing) return false;
+    db.delete(projectReportSections).where(eq(projectReportSections.id, existing.id)).run();
+    return true;
+  }
+  getProjectReportProgress(projectId: string) {
+    const totalSections = db.select().from(reportSectionTemplates).all().length;
+    const sections = this.getProjectReportSections(projectId);
+    const counts: Record<string, number> = {
+      not_started: 0, in_progress: 0, drafted: 0, reviewed: 0, final: 0,
+    };
+    for (const s of sections) {
+      counts[s.status] = (counts[s.status] ?? 0) + 1;
+    }
+    // Untouched sections are implicitly not_started — fold those in.
+    counts.not_started = (counts.not_started ?? 0) + (totalSections - sections.length);
+    return { totalSections, counts };
   }
 
   // Search

@@ -353,3 +353,112 @@ describe("Tags", () => {
     expect(dortdTag).toBeTruthy();
   });
 });
+
+// ─── Report Section Templates & Project Sections ─────────────────────────────
+
+describe("Report Section Templates", () => {
+  it("GET /api/report-section-templates returns the seeded outline", async () => {
+    const res = await request(app).get("/api/report-section-templates");
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    // Should be ~117 entries; assert a reasonable lower bound
+    expect(res.body.length).toBeGreaterThanOrEqual(100);
+    // Sanity: a known slug exists
+    const wacc = res.body.find((t: any) => t.slug === "income-approach.wacc");
+    expect(wacc).toBeTruthy();
+    expect(wacc.level).toBe(3);
+    expect(wacc.parentSlug).toBe("valuation-approaches.income-approach");
+  });
+
+  it("templates form a valid hierarchy (every parent_slug resolves)", async () => {
+    const res = await request(app).get("/api/report-section-templates");
+    const slugs = new Set(res.body.map((t: any) => t.slug));
+    for (const t of res.body) {
+      if (t.parentSlug) {
+        expect(slugs.has(t.parentSlug)).toBe(true);
+      } else {
+        expect(t.level).toBe(1);
+      }
+    }
+  });
+});
+
+describe("Project Report Sections", () => {
+  let projectId: string;
+
+  beforeAll(async () => {
+    const res = await request(app)
+      .post("/api/projects")
+      .send({ workspaceId: "ws_default", title: "Outline Test Project", reviewStatus: "draft" });
+    projectId = res.body.id;
+  });
+
+  it("GET project sections starts empty (lazy creation)", async () => {
+    const res = await request(app).get(`/api/projects/${projectId}/report-sections`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(0);
+  });
+
+  it("PUT creates a section row on first edit", async () => {
+    const res = await request(app)
+      .put(`/api/projects/${projectId}/report-sections/income-approach.wacc`)
+      .send({
+        body: "We selected a WACC of 12.5% based on the build-up method.",
+        status: "in_progress",
+        linkedSourceIds: [],
+        linkedAssumptionIds: [],
+        linkedExternalModelIds: [],
+        linkedSupportMemoIds: [],
+        linkedFileIds: [],
+        externalLinks: [{ label: "Damodaran", url: "https://pages.stern.nyu.edu/~adamodar/" }],
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.templateSlug).toBe("income-approach.wacc");
+    expect(res.body.body).toContain("12.5%");
+    expect(res.body.status).toBe("in_progress");
+    expect(Array.isArray(res.body.externalLinks)).toBe(true);
+    expect(res.body.externalLinks[0].url).toContain("adamodar");
+  });
+
+  it("PUT updates an existing section (returns 200, not 201)", async () => {
+    const res = await request(app)
+      .put(`/api/projects/${projectId}/report-sections/income-approach.wacc`)
+      .send({
+        body: "Updated WACC narrative.",
+        status: "drafted",
+        linkedSourceIds: [],
+        linkedAssumptionIds: [],
+        linkedExternalModelIds: [],
+        linkedSupportMemoIds: [],
+        linkedFileIds: [],
+        externalLinks: [],
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("drafted");
+    expect(res.body.body).toBe("Updated WACC narrative.");
+  });
+
+  it("PUT 404s on unknown template slug", async () => {
+    const res = await request(app)
+      .put(`/api/projects/${projectId}/report-sections/this-slug-does-not-exist`)
+      .send({ body: "x", status: "in_progress" });
+    expect(res.status).toBe(404);
+  });
+
+  it("GET progress reflects edited sections", async () => {
+    const res = await request(app).get(`/api/projects/${projectId}/report-progress`);
+    expect(res.status).toBe(200);
+    expect(res.body.totalSections).toBeGreaterThan(0);
+    // The drafted section we just saved should be counted
+    expect(res.body.counts.drafted).toBeGreaterThanOrEqual(1);
+  });
+
+  it("Project sections are isolated per project (no cross-leak)", async () => {
+    const otherProj = await request(app)
+      .post("/api/projects")
+      .send({ workspaceId: "ws_default", title: "Other Project", reviewStatus: "draft" });
+    const res = await request(app).get(`/api/projects/${otherProj.body.id}/report-sections`);
+    expect(res.body.length).toBe(0);
+  });
+});

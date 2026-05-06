@@ -7,6 +7,7 @@ import { sql } from "drizzle-orm";
 import { db } from "./db";
 import * as schema from "../shared/schema";
 import { nanoid } from "nanoid";
+import { REPORT_SECTION_TEMPLATES } from "../shared/report-section-template-data";
 
 function now() { return new Date().toISOString(); }
 
@@ -196,6 +197,44 @@ export async function initDb() {
       color TEXT,
       created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS report_section_templates (
+      id TEXT PRIMARY KEY,
+      slug TEXT NOT NULL UNIQUE,
+      parent_slug TEXT,
+      level INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      default_order INTEGER NOT NULL DEFAULT 0,
+      description TEXT,
+      guidance TEXT,
+      is_seed INTEGER DEFAULT 1,
+      is_readonly INTEGER DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_report_section_templates_parent
+      ON report_section_templates(parent_slug);
+    CREATE TABLE IF NOT EXISTS project_report_sections (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      project_id TEXT NOT NULL,
+      template_slug TEXT NOT NULL,
+      body TEXT,
+      status TEXT NOT NULL DEFAULT 'not_started',
+      linked_source_ids TEXT,
+      linked_assumption_ids TEXT,
+      linked_external_model_ids TEXT,
+      linked_support_memo_ids TEXT,
+      linked_file_ids TEXT,
+      external_links TEXT,
+      review_status TEXT DEFAULT 'draft',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      created_by TEXT,
+      updated_by TEXT,
+      UNIQUE(project_id, template_slug)
+    );
+    CREATE INDEX IF NOT EXISTS idx_project_report_sections_project
+      ON project_report_sections(project_id);
   `);
 
   // ── Seed demo user if not present ─────────────────────────────────────────
@@ -224,6 +263,40 @@ export async function initDb() {
        VALUES (?, ?, 'user_demo', 'owner', ?)`
     ).run(nanoid(), workspaceId, ts);
     console.log("[init-db] Seeded default workspace");
+  }
+
+  // ── Seed report section templates (idempotent upsert) ────────────────────
+  // Insert any missing templates. Existing rows with the same slug are left
+  // alone to preserve manual edits, but level/title/default_order are kept in
+  // sync with the canonical list so renames/reorders propagate.
+  const insertTplStmt = sqlite.prepare(
+    `INSERT OR IGNORE INTO report_section_templates
+     (id, slug, parent_slug, level, title, default_order, description, guidance, is_seed, is_readonly, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?)`
+  );
+  const updateTplStmt = sqlite.prepare(
+    `UPDATE report_section_templates
+     SET parent_slug = ?, level = ?, title = ?, default_order = ?, description = ?, guidance = ?, updated_at = ?
+     WHERE slug = ?`
+  );
+  let seededCount = 0;
+  const tplTs = now();
+  for (const tpl of REPORT_SECTION_TEMPLATES) {
+    const result = insertTplStmt.run(
+      nanoid(), tpl.slug, tpl.parentSlug, tpl.level, tpl.title, tpl.defaultOrder,
+      tpl.description ?? null, tpl.guidance ?? null, tplTs, tplTs,
+    );
+    if (result.changes > 0) {
+      seededCount++;
+    } else {
+      updateTplStmt.run(
+        tpl.parentSlug, tpl.level, tpl.title, tpl.defaultOrder,
+        tpl.description ?? null, tpl.guidance ?? null, tplTs, tpl.slug,
+      );
+    }
+  }
+  if (seededCount > 0) {
+    console.log(`[init-db] Seeded ${seededCount} report section templates`);
   }
 
   console.log("[init-db] Database ready");

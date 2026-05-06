@@ -176,4 +176,15 @@ export const api = {
   
   // Activity
   getActivity: (workspaceId?: string) => fetch(`/api/activity${workspaceId ? `?workspaceId=${workspaceId}` : ""}`).then(r => r.json()),
+
+  // Report sections (outline)
+  getReportSectionTemplates: () => fetch("/api/report-section-templates").then(r => r.json()),
+  getProjectReportSections: (projectId: string) =>
+    fetch(`/api/projects/${projectId}/report-sections`).then(r => r.json()),
+  getProjectReportProgress: (projectId: string) =>
+    fetch(`/api/projects/${projectId}/report-progress`).then(r => r.json()),
+  upsertProjectReportSection: (projectId: string, slug: string, data: any) =>
+    apiRequest("PUT", `/api/projects/${projectId}/report-sections/${slug}`, data),
+  deleteProjectReportSection: (projectId: string, slug: string) =>
+    apiRequest("DELETE", `/api/projects/${projectId}/report-sections/${slug}`),
 };

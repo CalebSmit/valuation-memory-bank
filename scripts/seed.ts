@@ -18,8 +18,10 @@ import {
   valuationAntipatterns, reasoningTemplates,
   referenceCases, referenceCaseArtifacts,
   qaItems, sources, tags,
+  reportSectionTemplates,
 } from "../shared/schema";
 import { eq } from "drizzle-orm";
+import { REPORT_SECTION_TEMPLATES } from "../shared/report-section-template-data";
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -471,6 +473,44 @@ async function seed() {
       updated_at TEXT NOT NULL,
       created_by TEXT
     );
+    CREATE TABLE IF NOT EXISTS report_section_templates (
+      id TEXT PRIMARY KEY,
+      slug TEXT NOT NULL UNIQUE,
+      parent_slug TEXT,
+      level INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      default_order INTEGER NOT NULL DEFAULT 0,
+      description TEXT,
+      guidance TEXT,
+      is_seed INTEGER DEFAULT 1,
+      is_readonly INTEGER DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_report_section_templates_parent
+      ON report_section_templates(parent_slug);
+    CREATE TABLE IF NOT EXISTS project_report_sections (
+      id TEXT PRIMARY KEY,
+      workspace_id TEXT NOT NULL,
+      project_id TEXT NOT NULL,
+      template_slug TEXT NOT NULL,
+      body TEXT,
+      status TEXT NOT NULL DEFAULT 'not_started',
+      linked_source_ids TEXT,
+      linked_assumption_ids TEXT,
+      linked_external_model_ids TEXT,
+      linked_support_memo_ids TEXT,
+      linked_file_ids TEXT,
+      external_links TEXT,
+      review_status TEXT DEFAULT 'draft',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      created_by TEXT,
+      updated_by TEXT,
+      UNIQUE(project_id, template_slug)
+    );
+    CREATE INDEX IF NOT EXISTS idx_project_report_sections_project
+      ON project_report_sections(project_id);
   `);
 
   // ─── Demo User ─────────────────────────────────────────────────────────────
@@ -1723,6 +1763,28 @@ This fixture is used for automated testing to confirm seed integrity.`,
   }
   console.log(`  ✓ ${artifactCount} Dordt reference artifacts seeded (case_id = ${DORDT_CASE_ID})`);
 
+  // ─── Report Section Templates ─────────────────────────────────────────────
+  let tplCount = 0;
+  for (const tpl of REPORT_SECTION_TEMPLATES) {
+    const existing = db.select().from(reportSectionTemplates).where(eq(reportSectionTemplates.slug, tpl.slug)).get();
+    if (!existing) {
+      db.insert(reportSectionTemplates).values({
+        id: id(), slug: tpl.slug, parentSlug: tpl.parentSlug, level: tpl.level, title: tpl.title,
+        defaultOrder: tpl.defaultOrder, description: tpl.description ?? null, guidance: tpl.guidance ?? null,
+        isSeed: true, isReadonly: true, createdAt: now(), updatedAt: now(),
+      }).run();
+      tplCount++;
+    } else {
+      // Keep title/order/level in sync with the canonical list
+      db.update(reportSectionTemplates).set({
+        parentSlug: tpl.parentSlug, level: tpl.level, title: tpl.title,
+        defaultOrder: tpl.defaultOrder, description: tpl.description ?? null, guidance: tpl.guidance ?? null,
+        updatedAt: now(),
+      }).where(eq(reportSectionTemplates.slug, tpl.slug)).run();
+    }
+  }
+  console.log(`  ✓ Report section templates: ${tplCount} new, ${REPORT_SECTION_TEMPLATES.length - tplCount} updated`);
+
   console.log("\n✅ Seed complete!");
   console.log("\n📋 Summary:");
   console.log(`   Playbooks: ${db.select().from(methodologyPlaybooks).all().length}`);
@@ -1733,6 +1795,7 @@ This fixture is used for automated testing to confirm seed integrity.`,
   console.log(`   Q&A Prompts: ${db.select().from(qaItems).all().length}`);
   console.log(`   Reference Cases: ${db.select().from(referenceCases).all().length}`);
   console.log(`   Reference Artifacts: ${db.select().from(referenceCaseArtifacts).all().length}`);
+  console.log(`   Report Section Templates: ${db.select().from(reportSectionTemplates).all().length}`);
   console.log(`   Tags: ${db.select().from(tags).all().length}`);
   console.log("\n🔑 Dordt Reference Case: case_id = dordt_gsu_2025 (read-only, not a project)");
   sqlite.close();

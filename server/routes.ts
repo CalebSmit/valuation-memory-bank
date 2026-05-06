@@ -10,6 +10,7 @@ import {
   insertExternalModelRefSchema, insertSupportMemoSchema, insertQaItemSchema,
   insertNoteSchema, insertLessonSchema, insertTagSchema, insertTagLinkSchema,
   insertFavoriteSchema, insertAiTaskSchema, insertFileSchema,
+  insertProjectReportSectionSchema,
 } from "../shared/schema";
 
 // Mock auth: always return a local demo user
@@ -84,6 +85,41 @@ function fromExternalModelBody(body: Record<string, any>): Record<string, any> {
   const mapped: Record<string, any> = { ...body };
   if ('storageLocation' in body) { mapped.fileOrUrlReference = body.storageLocation; delete mapped.storageLocation; }
   return mapped;
+}
+
+// Report sections: client sends arrays for linked IDs and external links;
+// DB stores them as JSON-encoded text. These helpers serialize/deserialize.
+const REPORT_SECTION_ARRAY_FIELDS = [
+  "linkedSourceIds",
+  "linkedAssumptionIds",
+  "linkedExternalModelIds",
+  "linkedSupportMemoIds",
+  "linkedFileIds",
+  "externalLinks",
+] as const;
+
+function fromReportSectionBody(body: Record<string, any>): Record<string, any> {
+  const mapped: Record<string, any> = { ...body };
+  for (const field of REPORT_SECTION_ARRAY_FIELDS) {
+    if (field in mapped && mapped[field] !== null && typeof mapped[field] !== "string") {
+      mapped[field] = JSON.stringify(mapped[field]);
+    }
+  }
+  return mapped;
+}
+
+function toReportSectionResponse(section: Record<string, any>): Record<string, any> {
+  if (!section) return section;
+  const out: Record<string, any> = { ...section };
+  for (const field of REPORT_SECTION_ARRAY_FIELDS) {
+    if (typeof out[field] === "string" && out[field].length > 0) {
+      try { out[field] = JSON.parse(out[field]); }
+      catch { out[field] = []; }
+    } else if (out[field] == null) {
+      out[field] = [];
+    }
+  }
+  return out;
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<void> {
@@ -718,6 +754,73 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.delete("/api/files/:id", (req, res) => {
     storage.deleteFile(req.params.id);
     res.json({ success: true });
+  });
+
+  // ─── Report Sections (outline) ──────────────────────────────────────────────
+  // Catalog of canonical section templates (read-only seed data).
+  app.get("/api/report-section-templates", (req, res) => {
+    res.json(storage.getReportSectionTemplates());
+  });
+
+  // Per-project section content. Lazy-creates rows on upsert.
+  app.get("/api/projects/:projectId/report-sections", (req, res) => {
+    const proj = storage.getProject(req.params.projectId);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    const sections = storage.getProjectReportSections(proj.id);
+    res.json(sections.map(toReportSectionResponse));
+  });
+
+  app.get("/api/projects/:projectId/report-sections/:slug", (req, res) => {
+    const proj = storage.getProject(req.params.projectId);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    const tpl = storage.getReportSectionTemplate(req.params.slug);
+    if (!tpl) return res.status(404).json({ error: "Section template not found" });
+    const section = storage.getProjectReportSection(proj.id, req.params.slug);
+    res.json(section ? toReportSectionResponse(section) : null);
+  });
+
+  app.put("/api/projects/:projectId/report-sections/:slug", (req, res) => {
+    const proj = storage.getProject(req.params.projectId);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    const tpl = storage.getReportSectionTemplate(req.params.slug);
+    if (!tpl) return res.status(404).json({ error: "Section template not found" });
+    const merged = fromReportSectionBody({
+      ...req.body,
+      workspaceId: proj.workspaceId,
+      projectId: proj.id,
+      templateSlug: tpl.slug,
+    });
+    const parsed = parseBody(insertProjectReportSectionSchema, merged);
+    if ("error" in parsed) return res.status(400).json({ error: parsed.error });
+    const existing = storage.getProjectReportSection(proj.id, tpl.slug);
+    const saved = storage.upsertProjectReportSection({
+      ...parsed.data,
+      createdBy: existing?.createdBy ?? MOCK_USER.id,
+      updatedBy: MOCK_USER.id,
+    });
+    logActivity({
+      workspaceId: proj.workspaceId,
+      projectId: proj.id,
+      action: existing ? "updated" : "created",
+      entityType: "report_section",
+      entityId: saved.id,
+      metadata: { slug: tpl.slug },
+    });
+    res.status(existing ? 200 : 201).json(toReportSectionResponse(saved));
+  });
+
+  app.delete("/api/projects/:projectId/report-sections/:slug", (req, res) => {
+    const proj = storage.getProject(req.params.projectId);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    const ok = storage.deleteProjectReportSection(proj.id, req.params.slug);
+    if (!ok) return res.status(404).json({ error: "Section content not found" });
+    res.json({ success: true });
+  });
+
+  app.get("/api/projects/:projectId/report-progress", (req, res) => {
+    const proj = storage.getProject(req.params.projectId);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    res.json(storage.getProjectReportProgress(proj.id));
   });
 
   // ─── AI Tasks ───────────────────────────────────────────────────────────────

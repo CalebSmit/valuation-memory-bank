@@ -542,6 +542,57 @@ export const insertAiTaskSchema = createInsertSchema(aiTasks).omit({ id: true, c
 export type InsertAiTask = z.infer<typeof insertAiTaskSchema>;
 export type AiTask = typeof aiTasks.$inferSelect;
 
+// ─── report_section_templates ─────────────────────────────────────────────────
+// Canonical, seed-only catalog of valuation report sections. Three levels:
+//   level=1 → Part      (e.g. "Income Approach")
+//   level=2 → Section   (e.g. "WACC")
+//   level=3 → Subsection (e.g. "Cost of Equity")
+// Slug is the stable identifier referenced from project_report_sections.
+export const reportSectionTemplates = sqliteTable("report_section_templates", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  parentSlug: text("parent_slug"),
+  level: integer("level").notNull(),
+  title: text("title").notNull(),
+  defaultOrder: integer("default_order").notNull().default(0),
+  description: text("description"),
+  guidance: text("guidance"),
+  isSeed: integer("is_seed", { mode: "boolean" }).default(true),
+  isReadonly: integer("is_readonly", { mode: "boolean" }).default(true),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+export const insertReportSectionTemplateSchema = createInsertSchema(reportSectionTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertReportSectionTemplate = z.infer<typeof insertReportSectionTemplateSchema>;
+export type ReportSectionTemplate = typeof reportSectionTemplates.$inferSelect;
+
+// ─── project_report_sections ──────────────────────────────────────────────────
+// Per-project content for a single section (lazily created on first edit).
+// Stores narrative + arrays of linked entity IDs (sources, assumptions, models,
+// memos, files) and ad-hoc external links.
+export const projectReportSections = sqliteTable("project_report_sections", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  projectId: text("project_id").notNull(),
+  templateSlug: text("template_slug").notNull(),
+  body: text("body"),
+  status: text("status").notNull().default("not_started"),
+  linkedSourceIds: text("linked_source_ids"),
+  linkedAssumptionIds: text("linked_assumption_ids"),
+  linkedExternalModelIds: text("linked_external_model_ids"),
+  linkedSupportMemoIds: text("linked_support_memo_ids"),
+  linkedFileIds: text("linked_file_ids"),
+  externalLinks: text("external_links"),
+  reviewStatus: text("review_status").default("draft"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+  createdBy: text("created_by"),
+  updatedBy: text("updated_by"),
+});
+export const insertProjectReportSectionSchema = createInsertSchema(projectReportSections).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertProjectReportSection = z.infer<typeof insertProjectReportSectionSchema>;
+export type ProjectReportSection = typeof projectReportSections.$inferSelect;
+
 // ─── files ────────────────────────────────────────────────────────────────────
 export const files = sqliteTable("files", {
   id: text("id").primaryKey(),

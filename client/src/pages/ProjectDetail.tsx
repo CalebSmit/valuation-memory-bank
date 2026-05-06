@@ -16,9 +16,10 @@ import { ReviewStatusBadge } from "@/components/ReviewStatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, Plus, Pencil, Trash2, ExternalLink, FileText, 
-  MessageSquare, StickyNote, BookMarked, Settings, Link2, Database
+  ArrowLeft, Plus, Pencil, Trash2, ExternalLink, FileText,
+  MessageSquare, StickyNote, BookMarked, Settings, Link2, Database, ListTree
 } from "lucide-react";
+import { ReportOutline } from "@/components/ReportOutline/ReportOutline";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -272,8 +273,9 @@ export default function ProjectDetail() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="assumptions" data-testid="tabs-project-detail">
+      <Tabs defaultValue="outline" data-testid="tabs-project-detail">
         <TabsList className="flex flex-wrap h-auto gap-1 p-1">
+          <TabsTrigger value="outline" className="text-xs"><ListTree className="h-3 w-3 mr-1" />Report Outline</TabsTrigger>
           <TabsTrigger value="assumptions" className="text-xs">Assumptions</TabsTrigger>
           <TabsTrigger value="sources" className="text-xs">Sources</TabsTrigger>
           <TabsTrigger value="models" className="text-xs">External Models</TabsTrigger>
@@ -282,6 +284,22 @@ export default function ProjectDetail() {
           <TabsTrigger value="notes" className="text-xs">Notes</TabsTrigger>
           <TabsTrigger value="lessons" className="text-xs">Lessons</TabsTrigger>
         </TabsList>
+
+        {/* REPORT OUTLINE */}
+        <TabsContent value="outline" className="mt-4">
+          <ReportOutline
+            projectId={projectId}
+            workspaceId={workspaceId ?? "ws_default"}
+            sources={sources}
+            assumptions={assumptions}
+            externalModels={externalRefs}
+            supportMemos={memos}
+            onCreateSource={() => setShowSource(true)}
+            onCreateAssumption={() => setShowAssumption(true)}
+            onCreateExternalModel={() => setShowExtRef(true)}
+            onCreateSupportMemo={() => setShowMemo(true)}
+          />
+        </TabsContent>
 
         {/* ASSUMPTIONS */}
         <TabsContent value="assumptions" className="mt-4">
