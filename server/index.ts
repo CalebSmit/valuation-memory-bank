@@ -4,6 +4,7 @@ import type { Request } from 'express';
 import cors from 'cors';
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
+import { initDb } from "./init-db";
 import { createServer } from "node:http";
 
 const app = express();
@@ -75,6 +76,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize database (create tables + seed demo data) on every startup
+  await initDb();
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
