@@ -12,6 +12,9 @@ compatibility_date = "2024-01-01"
 command = "npm run build"
 output_directory = "dist/public"
 
+# Required by Cloudflare Pages to recognise this as a valid Pages wrangler.toml
+pages_build_output_dir = "dist/public"
+
 # ─── D1 Database binding (SQLite-compatible) ─────────────────────────────────
 # To use Cloudflare D1 instead of local SQLite:
 # 1. Create a D1 database: `wrangler d1 create valuation-memory-bank`
