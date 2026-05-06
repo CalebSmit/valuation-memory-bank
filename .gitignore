@@ -1,8 +1,9 @@
 node_modules/
 .vite/
 
-# Client build output — Cloudflare Pages builds this; not needed in repo
-dist/public/
+# Client build output is committed (pre-built with VITE_API_URL baked in)
+# CF Pages uses build command: echo ok  (just deploys the committed files)
+# dist/public/  <-- intentionally tracked
 
 # SQLite database files — never commit; exposes demo data at rest
 data.db
