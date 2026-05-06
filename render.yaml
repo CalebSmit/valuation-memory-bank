@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: valuation-memory-bank-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build:server && npx tsx scripts/seed.ts
+    startCommand: node dist/index.cjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: AUTH_ENABLED
+        value: false
+      - key: AI_ENABLED
+        value: false
+    disk:
+      name: sqlite-data
+      mountPath: /data
+      sizeGB: 1

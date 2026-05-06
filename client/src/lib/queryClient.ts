@@ -1,6 +1,8 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-const API_BASE = "__PORT_5000__".startsWith("__") ? "" : "__PORT_5000__";
+// In dev: empty string (same-origin Express server on port 5000)
+// In production (Cloudflare Pages): VITE_API_URL points to the Render backend
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {

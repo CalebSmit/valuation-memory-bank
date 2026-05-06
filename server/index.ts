@@ -1,12 +1,25 @@
 import "dotenv/config";
 import express, { Response, NextFunction } from 'express';
 import type { Request } from 'express';
+import cors from 'cors';
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "node:http";
 
 const app = express();
 const httpServer = createServer(app);
+
+// Allow Cloudflare Pages frontend (and localhost dev) to call this API
+app.use(cors({
+  origin: [
+    /\.pages\.dev$/,           // any *.pages.dev subdomain
+    /\.pplx\.app$/,            // Perplexity preview
+    'http://localhost:5000',
+    'http://localhost:5173',
+    ...(process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : []),
+  ],
+  credentials: true,
+}));
 
 declare module "http" {
   interface IncomingMessage {

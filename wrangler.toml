@@ -1,38 +1,16 @@
-# Cloudflare Pages + Workers + D1 configuration
+# Cloudflare Pages configuration
 # https://developers.cloudflare.com/pages/
 
 name = "valuation-memory-bank"
 compatibility_date = "2024-01-01"
-
-# ─── Static site (Cloudflare Pages) ─────────────────────────────────────────
-# Build output: dist/public (static frontend)
-# API routes: handled by Cloudflare Worker or proxied to external backend
-
-[build]
-command = "npm run build"
-output_directory = "dist/public"
-
-# Required by Cloudflare Pages to recognise this as a valid Pages wrangler.toml
 pages_build_output_dir = "dist/public"
 
-# ─── D1 Database binding (SQLite-compatible) ─────────────────────────────────
-# To use Cloudflare D1 instead of local SQLite:
-# 1. Create a D1 database: `wrangler d1 create valuation-memory-bank`
-# 2. Update the database_id below
-# 3. Run migrations: `wrangler d1 execute valuation-memory-bank --file=./scripts/schema.sql`
+[build]
+command = "npm run build:client"
+output_directory = "dist/public"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "valuation-memory-bank"
-database_id = "YOUR_D1_DATABASE_ID_HERE"
-
-# ─── Environment variables ───────────────────────────────────────────────────
 [vars]
 NODE_ENV = "production"
 AUTH_ENABLED = "false"
 AI_ENABLED = "false"
-
-# ─── Dev server ──────────────────────────────────────────────────────────────
-[dev]
-port = 5000
-local_protocol = "http"
+# VITE_API_URL is set in the Cloudflare Pages dashboard (points to Render backend)

@@ -21,7 +21,10 @@ import {
 } from "../shared/schema";
 import { eq } from "drizzle-orm";
 
-const sqlite = new Database("local.db");
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+const dbPath = existsSync("/data") ? join("/data", "local.db") : (process.env.DATABASE_PATH ?? "local.db");
+const sqlite = new Database(dbPath);
 sqlite.pragma("journal_mode = WAL");
 const db = drizzle(sqlite);
 
