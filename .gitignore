@@ -1,6 +1,8 @@
 node_modules/
-dist/
 .vite/
+
+# Client build output (not needed in repo)
+dist/public/
 
 # SQLite database files — never commit; exposes demo data at rest
 data.db
