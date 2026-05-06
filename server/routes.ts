@@ -1,6 +1,7 @@
 import { type Express, Request, Response } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
+import { initDb } from "./init-db";
 import { z } from "zod";
 import {
   insertWorkspaceSchema, insertProjectSchema, insertPlaybookSchema,
@@ -123,6 +124,8 @@ function toReportSectionResponse(section: Record<string, any>): Record<string, a
 }
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<void> {
+  // Ensure all tables exist and seed data is present — safe to call on every startup / test run
+  await initDb();
 
   // ─── Auth / Me ──────────────────────────────────────────────────────────────
   app.get("/api/me", (req, res) => {
