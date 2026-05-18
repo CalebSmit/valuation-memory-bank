@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { CloneModal } from "@/components/CloneModal";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Plus, Copy, Lock, Pencil, Save, X, Trash2 } from "lucide-react";
+import { Shield, Plus, Copy, Lock, Pencil, Save, X, Trash2, Star } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -24,7 +24,13 @@ export default function PrinciplesPage() {
   const [cloneTarget, setCloneTarget] = useState<any>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [form, setForm] = useState({ title: "", body: "", category: "" });
+
+  const CATEGORIES = [
+    "all", "independence", "professional_judgment", "methodology", "documentation",
+    "standard_of_value", "level_of_value", "normalization", "report_writing", "ethics", "other",
+  ];
 
   const { data: principles = [], isLoading } = useQuery({
     queryKey: ["/api/principles"],
@@ -51,6 +57,19 @@ export default function PrinciplesPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deletePrinciple(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/principles"] });
+      toast({ title: "Principle deleted" });
+    },
+  });
+
+  const favoriteMutation = useMutation({
+    mutationFn: (p: any) => api.createFavorite({ entityType: "principle", entityId: p.id, entityTitle: p.title, workspaceId: workspaceId ?? "ws_default" }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/favorites"] }); toast({ title: "Added to favorites" }); },
+  });
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => api.updatePrinciple(id, data),
     onSuccess: () => {
@@ -62,7 +81,9 @@ export default function PrinciplesPage() {
 
   const filtered = principles.filter((p: any) => {
     const q = searchQ.toLowerCase();
-    return !q || p.title?.toLowerCase().includes(q) || p.body?.toLowerCase().includes(q);
+    const matchesQ = !q || p.title?.toLowerCase().includes(q) || p.body?.toLowerCase().includes(q);
+    const matchesCat = categoryFilter === "all" || p.category === categoryFilter;
+    return matchesQ && matchesCat;
   });
 
   return (
@@ -75,7 +96,12 @@ export default function PrinciplesPage() {
         <Button size="sm" onClick={() => setShowCreate(true)} data-testid="button-new-principle"><Plus className="h-3.5 w-3.5 mr-1.5" />New</Button>
       </div>
 
-      <Input placeholder="Search principles..." value={searchQ} onChange={(e) => setSearchQ(e.target.value)} className="max-w-sm" data-testid="input-search-principles" />
+      <div className="flex gap-2 flex-wrap">
+        <Input placeholder="Search principles..." value={searchQ} onChange={(e) => setSearchQ(e.target.value)} className="max-w-sm" data-testid="input-search-principles" />
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground" data-testid="select-category-principles">
+          {CATEGORIES.map(c => <option key={c} value={c}>{c === "all" ? "All Categories" : c.replace(/_/g, " ")}</option>)}
+        </select>
+      </div>
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{[1,2,3,4].map(i => <Skeleton key={i} className="h-28 w-full" />)}</div>
@@ -93,11 +119,15 @@ export default function PrinciplesPage() {
                     {p.isSeed && <Lock className="h-3 w-3 text-amber-400 flex-shrink-0" />}
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
+                    <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-yellow-400" onClick={() => favoriteMutation.mutate(p)} data-testid={`button-fav-principle-${p.id}`}><Star className="h-3 w-3" /></Button>
                     {p.clonable && (
                       <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setCloneTarget(p)} data-testid={`button-clone-principle-${p.id}`}><Copy className="h-3 w-3" /></Button>
                     )}
                     {!p.isSeed && (
                       <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditItem(p)} data-testid={`button-edit-principle-${p.id}`}><Pencil className="h-3 w-3" /></Button>
+                    )}
+                    {!p.isSeed && (
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => deleteMutation.mutate(p.id)} data-testid={`button-delete-principle-${p.id}`}><Trash2 className="h-3 w-3" /></Button>
                     )}
                   </div>
                 </div>

@@ -18,9 +18,6 @@ services:
       # Allowed CORS origins (comma-separated) — Cloudflare frontend lives here
       - key: CORS_ORIGINS
         value: https://valuation-memory-bank.pages.dev
+      # TURSO_DATABASE_URL and TURSO_AUTH_TOKEN are set directly in Render dashboard
+      # (not stored here to avoid committing credentials to a public repo)
     healthCheckPath: /api/me
-    # Persistent disk — survives container restarts on Render free tier
-    disk:
-      name: valuation-memory-bank-data
-      mountPath: /var/data
-      sizeGB: 1

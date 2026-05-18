@@ -518,6 +518,7 @@ export const activityLog = sqliteTable("activity_log", {
   action: text("action").notNull(),
   entityType: text("entity_type").notNull(),
   entityId: text("entity_id").notNull(),
+  entityTitle: text("entity_title"),
   metadata: text("metadata"),
   createdAt: text("created_at").notNull(),
 });

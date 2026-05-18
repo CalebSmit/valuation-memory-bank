@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { CloneModal } from "@/components/CloneModal";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Plus, Copy, Lock, ChevronRight, Trash2 } from "lucide-react";
+import { FileText, Plus, Copy, Lock, ChevronRight, Trash2, Star } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -25,7 +25,14 @@ export default function TemplatesPage() {
   const [searchQ, setSearchQ] = useState("");
   const [cloneTarget, setCloneTarget] = useState<any>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [form, setForm] = useState({ title: "", templateType: "", body: "" });
+
+  const T_CATEGORIES = [
+    "all", "wacc_memo", "income_approach_narrative", "market_approach_gpc",
+    "dlom_memo", "normalization_schedule", "engagement_letter_scope",
+    "reviewer_response", "other",
+  ];
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["/api/reasoning-templates"],
@@ -40,6 +47,11 @@ export default function TemplatesPage() {
       setCloneTarget(null);
       toast({ title: "Template cloned" });
     },
+  });
+
+  const favoriteMutation = useMutation({
+    mutationFn: (t: any) => api.createFavorite({ entityType: "template", entityId: t.id, entityTitle: t.title, workspaceId: workspaceId ?? "ws_default" }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/favorites"] }); toast({ title: "Added to favorites" }); },
   });
 
   const createMutation = useMutation({
@@ -62,7 +74,9 @@ export default function TemplatesPage() {
 
   const filtered = templates.filter((t: any) => {
     const q = searchQ.toLowerCase();
-    return !q || t.title?.toLowerCase().includes(q) || (t.useCase ?? t.templateType)?.toLowerCase().includes(q);
+    const matchesQ = !q || t.title?.toLowerCase().includes(q) || (t.useCase ?? t.templateType)?.toLowerCase().includes(q);
+    const matchesCat = categoryFilter === "all" || (t.useCase ?? t.templateType) === categoryFilter;
+    return matchesQ && matchesCat;
   });
 
   const seedTemplates = filtered.filter((t: any) => t.isSeed);
@@ -78,7 +92,12 @@ export default function TemplatesPage() {
         <Button size="sm" onClick={() => setShowCreate(true)} data-testid="button-new-template"><Plus className="h-3.5 w-3.5 mr-1.5" />New</Button>
       </div>
 
-      <Input placeholder="Search templates..." value={searchQ} onChange={(e) => setSearchQ(e.target.value)} className="max-w-sm" data-testid="input-search-templates" />
+      <div className="flex gap-2 flex-wrap">
+        <Input placeholder="Search templates..." value={searchQ} onChange={(e) => setSearchQ(e.target.value)} className="max-w-sm" data-testid="input-search-templates" />
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground" data-testid="select-category-templates">
+          {T_CATEGORIES.map(c => <option key={c} value={c}>{c === "all" ? "All Types" : c.replace(/_/g, " ")}</option>)}
+        </select>
+      </div>
 
       {isLoading ? (
         <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
@@ -91,7 +110,7 @@ export default function TemplatesPage() {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Seed Library</p>
               <div className="space-y-2">
                 {seedTemplates.map((t: any) => (
-                  <TemplateRow key={t.id} template={t} onClone={() => setCloneTarget(t)} />
+                  <TemplateRow key={t.id} template={t} onClone={() => setCloneTarget(t)} onFavorite={() => favoriteMutation.mutate(t)} />
                 ))}
               </div>
             </div>
@@ -101,7 +120,7 @@ export default function TemplatesPage() {
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">My Templates</p>
               <div className="space-y-2">
                 {myTemplates.map((t: any) => (
-                  <TemplateRow key={t.id} template={t} onClone={() => setCloneTarget(t)} onDelete={() => deleteMutation.mutate(t.id)} />
+                  <TemplateRow key={t.id} template={t} onClone={() => setCloneTarget(t)} onDelete={() => deleteMutation.mutate(t.id)} onFavorite={() => favoriteMutation.mutate(t)} />
                 ))}
               </div>
             </div>
@@ -129,7 +148,7 @@ export default function TemplatesPage() {
   );
 }
 
-function TemplateRow({ template, onClone, onDelete }: { template: any; onClone: () => void; onDelete?: () => void }) {
+function TemplateRow({ template, onClone, onDelete, onFavorite }: { template: any; onClone: () => void; onDelete?: () => void; onFavorite?: () => void }) {
   return (
     <Card className="hover:border-slate-600 transition-colors" data-testid={`template-card-${template.id}`}>
       <CardContent className="p-3 flex items-center justify-between gap-3">
@@ -146,6 +165,9 @@ function TemplateRow({ template, onClone, onDelete }: { template: any; onClone: 
           </div>
         </Link>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {onFavorite && (
+            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-yellow-400" onClick={onFavorite} data-testid={`button-fav-template-${template.id}`}><Star className="h-3.5 w-3.5" /></Button>
+          )}
           {template.clonable && (
             <Button size="sm" variant="ghost" className="text-xs h-7" onClick={onClone} data-testid={`button-clone-template-${template.id}`}><Copy className="h-3 w-3 mr-1" />Clone</Button>
           )}

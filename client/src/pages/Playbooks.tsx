@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { CloneModal } from "@/components/CloneModal";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, Plus, Copy, Lock, ChevronRight, Trash2 } from "lucide-react";
+import { BookOpen, Plus, Copy, Lock, ChevronRight, Trash2, Star } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -25,7 +25,14 @@ export default function PlaybooksPage() {
   const [searchQ, setSearchQ] = useState("");
   const [cloneTarget, setCloneTarget] = useState<any>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [form, setForm] = useState({ title: "", engagementType: "", body: "" });
+
+  const PB_CATEGORIES = [
+    "all", "business_valuation", "esop_valuation", "fairness_opinion",
+    "dlom_analysis", "market_approach", "income_approach", "asset_approach",
+    "quality_of_earnings", "minority_interest", "other",
+  ];
 
   const { data: playbooks = [], isLoading } = useQuery({
     queryKey: ["/api/playbooks", workspaceId],
@@ -53,6 +60,11 @@ export default function PlaybooksPage() {
     },
   });
 
+  const favoriteMutation = useMutation({
+    mutationFn: (p: any) => api.createFavorite({ entityType: "playbook", entityId: p.id, entityTitle: p.title, workspaceId: workspaceId ?? "ws_default" }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/favorites"] }); toast({ title: "Added to favorites" }); },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.deletePlaybook(id),
     onSuccess: () => {
@@ -63,7 +75,9 @@ export default function PlaybooksPage() {
 
   const filtered = playbooks.filter((p: any) => {
     const q = searchQ.toLowerCase();
-    return !q || p.title?.toLowerCase().includes(q) || p.engagementType?.toLowerCase().includes(q);
+    const matchesQ = !q || p.title?.toLowerCase().includes(q) || p.engagementType?.toLowerCase().includes(q) || (p.whenToUse ?? "").toLowerCase().includes(q);
+    const matchesCat = categoryFilter === "all" || p.engagementType === categoryFilter || p.whenToUse === categoryFilter;
+    return matchesQ && matchesCat;
   });
 
   const seedPlaybooks = filtered.filter((p: any) => p.isSeed);
@@ -83,13 +97,18 @@ export default function PlaybooksPage() {
         </Button>
       </div>
 
-      <Input
-        placeholder="Search playbooks..."
-        value={searchQ}
-        onChange={(e) => setSearchQ(e.target.value)}
-        className="max-w-sm"
-        data-testid="input-search-playbooks"
-      />
+      <div className="flex gap-2 flex-wrap">
+        <Input
+          placeholder="Search playbooks..."
+          value={searchQ}
+          onChange={(e) => setSearchQ(e.target.value)}
+          className="max-w-sm"
+          data-testid="input-search-playbooks"
+        />
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground" data-testid="select-category-playbooks">
+          {PB_CATEGORIES.map(c => <option key={c} value={c}>{c === "all" ? "All Types" : c.replace(/_/g, " ")}</option>)}
+        </select>
+      </div>
 
       {isLoading ? (
         <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
@@ -108,6 +127,7 @@ export default function PlaybooksPage() {
                     key={p.id}
                     playbook={p}
                     onClone={() => setCloneTarget(p)}
+                    onFavorite={() => favoriteMutation.mutate(p)}
                     onDelete={!p.isSeed ? () => deleteMutation.mutate(p.id) : undefined}
                   />
                 ))}
@@ -125,6 +145,7 @@ export default function PlaybooksPage() {
                     key={p.id}
                     playbook={p}
                     onClone={() => setCloneTarget(p)}
+                    onFavorite={() => favoriteMutation.mutate(p)}
                     onDelete={() => deleteMutation.mutate(p.id)}
                   />
                 ))}
@@ -166,7 +187,7 @@ export default function PlaybooksPage() {
   );
 }
 
-function PlaybookRow({ playbook, onClone, onDelete }: { playbook: any; onClone: () => void; onDelete?: () => void }) {
+function PlaybookRow({ playbook, onClone, onDelete, onFavorite }: { playbook: any; onClone: () => void; onDelete?: () => void; onFavorite?: () => void }) {
   return (
     <Card className="hover:border-slate-600 transition-colors" data-testid={`playbook-card-${playbook.id}`}>
       <CardContent className="p-3 flex items-center justify-between gap-3">
@@ -187,6 +208,11 @@ function PlaybookRow({ playbook, onClone, onDelete }: { playbook: any; onClone: 
           </div>
         </Link>
         <div className="flex items-center gap-1 flex-shrink-0">
+          {onFavorite && (
+            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-yellow-400" onClick={onFavorite} data-testid={`button-fav-playbook-${playbook.id}`}>
+              <Star className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {playbook.clonable && (
             <Button size="sm" variant="ghost" className="text-xs h-7" onClick={onClone} data-testid={`button-clone-playbook-${playbook.id}`}>
               <Copy className="h-3 w-3 mr-1" />Clone

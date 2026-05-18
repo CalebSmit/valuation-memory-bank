@@ -1,25 +1,45 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import { existsSync, mkdirSync } from "fs";
 import * as schema from "../shared/schema";
 
-// On Render free tier: use persistent disk at /var/data so the DB survives
-// container restarts. Locally (where /var/data is not writable), fall back
-// to local.db in the working directory.
-function getDbPath(): string {
-  const dbDir = "/var/data";
-  try {
-    if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true });
-    return `${dbDir}/local.db`;
-  } catch {
-    // /var/data is not writable — local dev, use working directory
-    return process.env.DATABASE_PATH ?? "local.db";
+// ── Database setup ────────────────────────────────────────────────────────────
+// Production (Render): use Turso hosted libSQL so data persists across container
+// restarts (Render free tier has no persistent disk — sqlite file is wiped on
+// every restart / deploy).
+// Development: fall back to local better-sqlite3 file.
+
+function buildDb() {
+  if (process.env.TURSO_DATABASE_URL) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { createClient } = require("@libsql/client") as typeof import("@libsql/client");
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { drizzle } = require("drizzle-orm/libsql") as typeof import("drizzle-orm/libsql");
+    const client = createClient({
+      url: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
+    return drizzle(client, { schema });
   }
+
+  // Local dev — better-sqlite3
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const Database = require("better-sqlite3") as typeof import("better-sqlite3");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { drizzle } = require("drizzle-orm/better-sqlite3") as typeof import("drizzle-orm/better-sqlite3");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { existsSync, mkdirSync } = require("fs") as typeof import("fs");
+
+  function getDbPath(): string {
+    const dbDir = "/var/data";
+    try {
+      if (!existsSync(dbDir)) mkdirSync(dbDir, { recursive: true });
+      return `${dbDir}/local.db`;
+    } catch {
+      return process.env.DATABASE_PATH ?? "local.db";
+    }
+  }
+
+  const sqlite = new (Database as any)(getDbPath());
+  sqlite.pragma("journal_mode = WAL");
+  return drizzle(sqlite, { schema });
 }
 
-const dbPath = getDbPath();
-const sqlite = new Database(dbPath);
-// Enable WAL mode for better performance
-sqlite.pragma("journal_mode = WAL");
-
-export const db = drizzle(sqlite, { schema });
+export const db = buildDb();

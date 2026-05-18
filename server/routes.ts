@@ -17,7 +17,7 @@ import {
 // Mock auth: always return a local demo user
 const MOCK_USER = { id: "user_demo", email: "demo@valuation-memory-bank.local", name: "Demo Analyst", role: "analyst" };
 
-function logActivity(opts: { workspaceId?: string; projectId?: string; action: string; entityType: string; entityId: string; metadata?: any }) {
+function logActivity(opts: { workspaceId?: string; projectId?: string; action: string; entityType: string; entityId: string; entityTitle?: string; metadata?: any }) {
   try {
     storage.createActivityLog({
       workspaceId: opts.workspaceId ?? null,
@@ -26,6 +26,7 @@ function logActivity(opts: { workspaceId?: string; projectId?: string; action: s
       action: opts.action,
       entityType: opts.entityType,
       entityId: opts.entityId,
+      entityTitle: opts.entityTitle ?? null,
       metadata: opts.metadata ? JSON.stringify(opts.metadata) : null,
     });
   } catch {}
@@ -205,7 +206,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const parsed = parseBody(insertWorkspaceSchema, req.body);
     if ("error" in parsed) return res.status(400).json({ error: parsed.error });
     const ws = storage.createWorkspace(parsed.data);
-    logActivity({ workspaceId: ws.id, action: "created", entityType: "workspace", entityId: ws.id });
+    logActivity({ workspaceId: ws.id, action: "created", entityType: "workspace", entityId: ws.id, entityTitle: ws.name });
     res.status(201).json(ws);
   });
   app.get("/api/workspaces/:id", (req, res) => {
@@ -248,7 +249,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const parsed = parseBody(insertProjectSchema, mapped);
     if ("error" in parsed) return res.status(400).json({ error: parsed.error });
     const proj = storage.createProject({ ...parsed.data, createdBy: MOCK_USER.id, updatedBy: MOCK_USER.id });
-    logActivity({ workspaceId: proj.workspaceId, projectId: proj.id, action: "created", entityType: "project", entityId: proj.id });
+    logActivity({ workspaceId: proj.workspaceId, projectId: proj.id, action: "created", entityType: "project", entityId: proj.id, entityTitle: proj.name });
     res.status(201).json(toProjectResponse(proj as any));
   });
   app.get("/api/projects/:id", (req, res) => {
@@ -260,7 +261,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const mapped = fromProjectBody(req.body);
     const proj = storage.updateProject(req.params.id, { ...mapped, updatedBy: MOCK_USER.id } as any);
     if (!proj) return res.status(404).json({ error: "Not found" });
-    logActivity({ workspaceId: proj.workspaceId, projectId: proj.id, action: "updated", entityType: "project", entityId: proj.id });
+    logActivity({ workspaceId: proj.workspaceId, projectId: proj.id, action: "updated", entityType: "project", entityId: proj.id, entityTitle: proj.name });
     res.json(toProjectResponse(proj as any));
   });
   app.delete("/api/projects/:id", (req, res) => {
@@ -288,7 +289,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const parsed = parseBody(insertPlaybookSchema, fromPlaybookBody(req.body));
     if ("error" in parsed) return res.status(400).json({ error: parsed.error });
     const pb = storage.createPlaybook({ ...parsed.data, createdBy: MOCK_USER.id });
-    logActivity({ workspaceId: pb.workspaceId ?? undefined, action: "created", entityType: "playbook", entityId: pb.id });
+    logActivity({ workspaceId: pb.workspaceId ?? undefined, action: "created", entityType: "playbook", entityId: pb.id, entityTitle: pb.title });
     res.status(201).json(pb);
   });
   app.get("/api/playbooks/:id", (req, res) => {
@@ -300,7 +301,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const pb = storage.updatePlaybook(req.params.id, req.body);
       if (!pb) return res.status(404).json({ error: "Not found" });
-      logActivity({ action: "updated", entityType: "playbook", entityId: req.params.id });
+      logActivity({ action: "updated", entityType: "playbook", entityId: req.params.id, entityTitle: pb?.title });
       res.json(pb);
     } catch (e: any) { res.status(403).json({ error: e.message }); }
   });
@@ -316,7 +317,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const { projectId, newTitle } = req.body;
     if (!workspaceId) return res.status(400).json({ error: "workspaceId required" });
     const clone = storage.clonePlaybook(req.params.id, workspaceId, projectId, newTitle);
-    logActivity({ workspaceId, action: "cloned", entityType: "playbook", entityId: clone.id, metadata: { clonedFrom: req.params.id } });
+    logActivity({ workspaceId, action: "cloned", entityType: "playbook", entityId: clone.id, entityTitle: clone.title, metadata: { clonedFrom: req.params.id } });
     res.status(201).json(clone);
   });
 
@@ -506,7 +507,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const parsed = parseBody(insertAssumptionSchema, mapped);
     if ("error" in parsed) return res.status(400).json({ error: parsed.error });
     const a = storage.createAssumption({ ...parsed.data, createdBy: MOCK_USER.id });
-    logActivity({ workspaceId: a.workspaceId, projectId: a.projectId ?? undefined, action: "created", entityType: "assumption", entityId: a.id });
+    logActivity({ workspaceId: a.workspaceId, projectId: a.projectId ?? undefined, action: "created", entityType: "assumption", entityId: a.id, entityTitle: (a as any).name });
     res.status(201).json(toAssumptionResponse(a as any));
   });
   app.get("/api/assumptions/:id", (req, res) => {
@@ -531,7 +532,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const parsed = parseBody(insertSourceSchema, req.body);
     if ("error" in parsed) return res.status(400).json({ error: parsed.error });
     const s = storage.createSource({ ...parsed.data, createdBy: MOCK_USER.id });
-    logActivity({ workspaceId: s.workspaceId, projectId: s.projectId ?? undefined, action: "created", entityType: "source", entityId: s.id });
+    logActivity({ workspaceId: s.workspaceId, projectId: s.projectId ?? undefined, action: "created", entityType: "source", entityId: s.id, entityTitle: s.title });
     res.status(201).json(s);
   });
   app.get("/api/sources/:id", (req, res) => {
@@ -606,7 +607,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const parsed = parseBody(insertSupportMemoSchema, req.body);
     if ("error" in parsed) return res.status(400).json({ error: parsed.error });
     const memo = storage.createSupportMemo({ ...parsed.data, createdBy: MOCK_USER.id });
-    logActivity({ workspaceId: memo.workspaceId, projectId: memo.projectId ?? undefined, action: "created", entityType: "support_memo", entityId: memo.id });
+    logActivity({ workspaceId: memo.workspaceId, projectId: memo.projectId ?? undefined, action: "created", entityType: "support_memo", entityId: memo.id, entityTitle: memo.title });
     res.status(201).json(memo);
   });
   app.get("/api/support-memos/:id", (req, res) => {
@@ -695,7 +696,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const parsed = parseBody(insertLessonSchema, req.body);
     if ("error" in parsed) return res.status(400).json({ error: parsed.error });
     const lesson = storage.createLesson({ ...parsed.data, createdBy: MOCK_USER.id });
-    logActivity({ workspaceId: lesson.workspaceId ?? undefined, projectId: lesson.projectId ?? undefined, action: "created", entityType: "lesson", entityId: lesson.id });
+    logActivity({ workspaceId: lesson.workspaceId ?? undefined, projectId: lesson.projectId ?? undefined, action: "created", entityType: "lesson", entityId: lesson.id, entityTitle: lesson.title });
     res.status(201).json(lesson);
   });
   app.get("/api/lessons/:id", (req, res) => {

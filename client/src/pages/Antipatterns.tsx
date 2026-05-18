@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { CloneModal } from "@/components/CloneModal";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Plus, Copy, Lock, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, Copy, Lock, Pencil, Trash2, Star } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -35,7 +35,13 @@ export default function AntipatternsPage() {
   const [cloneTarget, setCloneTarget] = useState<any>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [form, setForm] = useState({ title: "", description: "", severity: "medium", consequence: "", remediation: "", category: "" });
+
+  const AP_CATEGORIES = [
+    "all", "methodology", "market_approach", "income_approach", "asset_approach",
+    "dlom", "normalization", "assumptions", "documentation", "esop", "other",
+  ];
 
   const { data: antipatterns = [], isLoading } = useQuery({
     queryKey: ["/api/anti-patterns"],
@@ -50,6 +56,11 @@ export default function AntipatternsPage() {
       setCloneTarget(null);
       toast({ title: "Anti-pattern cloned" });
     },
+  });
+
+  const favoriteMutation = useMutation({
+    mutationFn: (a: any) => api.createFavorite({ entityType: "antipattern", entityId: a.id, entityTitle: a.title, workspaceId: workspaceId ?? "ws_default" }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/favorites"] }); toast({ title: "Added to favorites" }); },
   });
 
   const createMutation = useMutation({
@@ -73,7 +84,9 @@ export default function AntipatternsPage() {
 
   const filtered = antipatterns.filter((a: any) => {
     const q = searchQ.toLowerCase();
-    return !q || a.title?.toLowerCase().includes(q) || a.description?.toLowerCase().includes(q);
+    const matchesQ = !q || a.title?.toLowerCase().includes(q) || a.description?.toLowerCase().includes(q);
+    const matchesCat = categoryFilter === "all" || a.category === categoryFilter;
+    return matchesQ && matchesCat;
   });
 
   return (
@@ -86,7 +99,12 @@ export default function AntipatternsPage() {
         <Button size="sm" onClick={() => setShowCreate(true)} data-testid="button-new-antipattern"><Plus className="h-3.5 w-3.5 mr-1.5" />New</Button>
       </div>
 
-      <Input placeholder="Search anti-patterns..." value={searchQ} onChange={(e) => setSearchQ(e.target.value)} className="max-w-sm" data-testid="input-search-antipatterns" />
+      <div className="flex gap-2 flex-wrap">
+        <Input placeholder="Search anti-patterns..." value={searchQ} onChange={(e) => setSearchQ(e.target.value)} className="max-w-sm" data-testid="input-search-antipatterns" />
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground" data-testid="select-category-antipatterns">
+          {AP_CATEGORIES.map(c => <option key={c} value={c}>{c === "all" ? "All Categories" : c.replace(/_/g, " ")}</option>)}
+        </select>
+      </div>
 
       {isLoading ? (
         <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>
@@ -114,6 +132,7 @@ export default function AntipatternsPage() {
                     </div>
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-yellow-400" onClick={() => favoriteMutation.mutate(a)} data-testid={`button-fav-antipattern-${a.id}`}><Star className="h-3.5 w-3.5" /></Button>
                     {a.clonable && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setCloneTarget(a)} data-testid={`button-clone-antipattern-${a.id}`}><Copy className="h-3.5 w-3.5" /></Button>}
                     {!a.isSeed && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditItem(a)} data-testid={`button-edit-antipattern-${a.id}`}><Pencil className="h-3.5 w-3.5" /></Button>}
                   </div>
