@@ -62,7 +62,7 @@ export default function TemplatesPage() {
 
   const filtered = templates.filter((t: any) => {
     const q = searchQ.toLowerCase();
-    return !q || t.title?.toLowerCase().includes(q) || t.templateType?.toLowerCase().includes(q);
+    return !q || t.title?.toLowerCase().includes(q) || (t.useCase ?? t.templateType)?.toLowerCase().includes(q);
   });
 
   const seedTemplates = filtered.filter((t: any) => t.isSeed);
@@ -141,7 +141,7 @@ function TemplateRow({ template, onClone, onDelete }: { template: any; onClone: 
                 <p className="text-sm font-medium truncate">{template.title}</p>
                 {template.isSeed && <Lock className="h-3 w-3 text-amber-400 flex-shrink-0" />}
               </div>
-              {template.templateType && <p className="text-xs text-muted-foreground capitalize">{template.templateType.replace(/_/g," ")}</p>}
+              {(template.useCase || template.templateType) && <p className="text-xs text-muted-foreground capitalize">{(template.useCase ?? template.templateType).replace(/_/g," ")}</p>}
             </div>
           </div>
         </Link>

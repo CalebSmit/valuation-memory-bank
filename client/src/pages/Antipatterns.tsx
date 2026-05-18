@@ -109,8 +109,8 @@ export default function AntipatternsPage() {
                         )}
                       </div>
                       {a.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.description}</p>}
-                      {a.consequence && <p className="text-xs text-red-400/80 mt-1">⚠ {a.consequence}</p>}
-                      {a.remediation && <p className="text-xs text-emerald-400/80 mt-0.5">✓ {a.remediation}</p>}
+                      {(a.whyItMatters || a.consequence) && <p className="text-xs text-red-400/80 mt-1">⚠ {a.whyItMatters ?? a.consequence}</p>}
+                      {(a.howToFix || a.remediation) && <p className="text-xs text-emerald-400/80 mt-0.5">✓ {a.howToFix ?? a.remediation}</p>}
                     </div>
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
@@ -159,8 +159,8 @@ export default function AntipatternsPage() {
             <div className="space-y-3 py-2">
               <div><Label className="text-xs text-muted-foreground mb-1 block">Title</Label><Input value={editItem.title} onChange={(e) => setEditItem({ ...editItem, title: e.target.value })} /></div>
               <div><Label className="text-xs text-muted-foreground mb-1 block">Description</Label><Textarea value={editItem.description ?? ""} onChange={(e) => setEditItem({ ...editItem, description: e.target.value })} rows={3} /></div>
-              <div><Label className="text-xs text-muted-foreground mb-1 block">Consequence</Label><Input value={editItem.consequence ?? ""} onChange={(e) => setEditItem({ ...editItem, consequence: e.target.value })} /></div>
-              <div><Label className="text-xs text-muted-foreground mb-1 block">Remediation</Label><Input value={editItem.remediation ?? ""} onChange={(e) => setEditItem({ ...editItem, remediation: e.target.value })} /></div>
+              <div><Label className="text-xs text-muted-foreground mb-1 block">Consequence</Label><Input value={editItem.whyItMatters ?? editItem.consequence ?? ""} onChange={(e) => setEditItem({ ...editItem, whyItMatters: e.target.value })} /></div>
+              <div><Label className="text-xs text-muted-foreground mb-1 block">Remediation</Label><Input value={editItem.howToFix ?? editItem.remediation ?? ""} onChange={(e) => setEditItem({ ...editItem, howToFix: e.target.value })} /></div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
