@@ -17,7 +17,8 @@ import { EmptyState } from "@/components/EmptyState";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Plus, Pencil, Trash2, ExternalLink, FileText,
-  MessageSquare, StickyNote, BookMarked, Settings, Link2, Database, ListTree
+  MessageSquare, StickyNote, BookMarked, Settings, Link2, Database, ListTree,
+  ChevronUp, ChevronDown, LayoutList
 } from "lucide-react";
 import { ReportOutline } from "@/components/ReportOutline/ReportOutline";
 import {
@@ -80,6 +81,56 @@ export default function ProjectDetail() {
     queryFn: () => api.getLessons(workspaceId, projectId),
     enabled: !!projectId,
   });
+
+  // ---- Custom Sections ----
+  const { data: customSections = [], refetch: refetchSections } = useQuery({
+    queryKey: ["/api/projects", projectId, "sections"],
+    queryFn: () => api.getProjectSections(projectId),
+    enabled: !!projectId,
+  });
+  const [showSection, setShowSection] = useState(false);
+  const [secForm, setSecForm] = useState({ title: "", body: "" });
+  const [editSecId, setEditSecId] = useState<string | null>(null);
+  const [editSecForm, setEditSecForm] = useState({ title: "", body: "" });
+
+  const createSection = useMutation({
+    mutationFn: () => api.createProjectSection(projectId, { ...secForm, workspaceId: workspaceId ?? "ws_default" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "sections"] });
+      setShowSection(false);
+      setSecForm({ title: "", body: "" });
+      toast({ title: "Section added" });
+    },
+  });
+  const updateSection = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.updateProjectSection(projectId, id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "sections"] });
+      setEditSecId(null);
+      toast({ title: "Section updated" });
+    },
+  });
+  const deleteSection = useMutation({
+    mutationFn: (id: string) => api.deleteProjectSection(projectId, id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "sections"] }),
+  });
+  const reorderSection = useMutation({
+    mutationFn: (orderedIds: string[]) => api.reorderProjectSections(projectId, orderedIds),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "sections"] }),
+  });
+
+  function moveSectionUp(index: number) {
+    if (index === 0) return;
+    const ids = (customSections as any[]).map((s: any) => s.id);
+    [ids[index - 1], ids[index]] = [ids[index], ids[index - 1]];
+    reorderSection.mutate(ids);
+  }
+  function moveSectionDown(index: number) {
+    if (index === (customSections as any[]).length - 1) return;
+    const ids = (customSections as any[]).map((s: any) => s.id);
+    [ids[index], ids[index + 1]] = [ids[index + 1], ids[index]];
+    reorderSection.mutate(ids);
+  }
 
   // Edit project state
   const [editForm, setEditForm] = useState<any>(null);
@@ -283,6 +334,7 @@ export default function ProjectDetail() {
           <TabsTrigger value="qa" className="text-xs">Q&A</TabsTrigger>
           <TabsTrigger value="notes" className="text-xs">Notes</TabsTrigger>
           <TabsTrigger value="lessons" className="text-xs">Lessons</TabsTrigger>
+          <TabsTrigger value="sections" className="text-xs"><LayoutList className="h-3 w-3 mr-1" />Sections</TabsTrigger>
         </TabsList>
 
         {/* REPORT OUTLINE */}
@@ -490,6 +542,99 @@ export default function ProjectDetail() {
             </div>
           )}
         </TabsContent>
+
+        {/* CUSTOM SECTIONS */}
+        <TabsContent value="sections" className="mt-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-sm font-semibold">Custom Sections ({(customSections as any[]).length})</h2>
+            <Button size="sm" onClick={() => setShowSection(true)} data-testid="button-add-section">
+              <Plus className="h-3.5 w-3.5 mr-1" /> Add Section
+            </Button>
+          </div>
+          {(customSections as any[]).length === 0 ? (
+            <EmptyState
+              icon={LayoutList}
+              title="No custom sections"
+              description="Add project-specific sections to organise your work."
+              action={{ label: "Add Section", onClick: () => setShowSection(true) }}
+            />
+          ) : (
+            <div className="space-y-2">
+              {(customSections as any[]).map((s: any, idx: number) => (
+                <Card key={s.id} data-testid={`section-card-${s.id}`}>
+                  <CardContent className="p-3">
+                    {editSecId === s.id ? (
+                      <div className="space-y-2">
+                        <Input
+                          value={editSecForm.title}
+                          onChange={(e) => setEditSecForm({ ...editSecForm, title: e.target.value })}
+                          placeholder="Section title"
+                          className="text-sm"
+                        />
+                        <Textarea
+                          value={editSecForm.body}
+                          onChange={(e) => setEditSecForm({ ...editSecForm, body: e.target.value })}
+                          placeholder="Section content (optional)"
+                          rows={3}
+                          className="text-xs"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => updateSection.mutate({ id: s.id, data: editSecForm })}
+                            disabled={!editSecForm.title.trim() || updateSection.isPending}
+                          >
+                            Save
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setEditSecId(null)}>Cancel</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">{s.title}</p>
+                          {s.body && <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{s.body}</p>}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            size="icon" variant="ghost" className="h-7 w-7"
+                            onClick={() => moveSectionUp(idx)}
+                            disabled={idx === 0}
+                            title="Move up"
+                          >
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon" variant="ghost" className="h-7 w-7"
+                            onClick={() => moveSectionDown(idx)}
+                            disabled={idx === (customSections as any[]).length - 1}
+                            title="Move down"
+                          >
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon" variant="ghost" className="h-7 w-7"
+                            onClick={() => { setEditSecId(s.id); setEditSecForm({ title: s.title, body: s.body ?? "" }); }}
+                            title="Edit"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon" variant="ghost" className="h-7 w-7 text-destructive"
+                            onClick={() => deleteSection.mutate(s.id)}
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* ---- Dialogs ---- */}
@@ -643,6 +788,39 @@ export default function ProjectDetail() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowLesson(false)}>Cancel</Button>
             <Button onClick={() => createLesson.mutate()} disabled={!lForm.title.trim() || createLesson.isPending} data-testid="button-save-lesson">Add</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom Section */}
+      <Dialog open={showSection} onOpenChange={(v) => !v && setShowSection(false)}>
+        <DialogContent><DialogHeader><DialogTitle>Add Custom Section</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <div><Label className="text-xs text-muted-foreground mb-1 block">Title *</Label>
+              <Input
+                value={secForm.title}
+                onChange={(e) => setSecForm({ ...secForm, title: e.target.value })}
+                placeholder="e.g. Engagement Context, Key Risks"
+                data-testid="input-section-title"
+              /></div>
+            <div><Label className="text-xs text-muted-foreground mb-1 block">Content (optional)</Label>
+              <Textarea
+                value={secForm.body}
+                onChange={(e) => setSecForm({ ...secForm, body: e.target.value })}
+                rows={4}
+                placeholder="Notes, bullet points, or summary text"
+                data-testid="input-section-body"
+              /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSection(false)}>Cancel</Button>
+            <Button
+              onClick={() => createSection.mutate()}
+              disabled={!secForm.title.trim() || createSection.isPending}
+              data-testid="button-save-section"
+            >
+              Add
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

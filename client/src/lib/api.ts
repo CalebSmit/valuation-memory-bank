@@ -187,4 +187,16 @@ export const api = {
     apiRequest("PUT", `/api/projects/${projectId}/report-sections/${slug}`, data),
   deleteProjectReportSection: (projectId: string, slug: string) =>
     apiRequest("DELETE", `/api/projects/${projectId}/report-sections/${slug}`),
+
+  // Project Sections (custom)
+  getProjectSections: (projectId: string) =>
+    apiGet(`/api/projects/${projectId}/sections`),
+  createProjectSection: (projectId: string, data: any) =>
+    apiRequest("POST", `/api/projects/${projectId}/sections`, data),
+  updateProjectSection: (projectId: string, sectionId: string, data: any) =>
+    apiRequest("PATCH", `/api/projects/${projectId}/sections/${sectionId}`, data),
+  deleteProjectSection: (projectId: string, sectionId: string) =>
+    apiRequest("DELETE", `/api/projects/${projectId}/sections/${sectionId}`),
+  reorderProjectSections: (projectId: string, orderedIds: string[]) =>
+    apiRequest("PUT", `/api/projects/${projectId}/sections/reorder`, { orderedIds }),
 };

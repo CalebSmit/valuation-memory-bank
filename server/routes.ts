@@ -11,7 +11,7 @@ import {
   insertExternalModelRefSchema, insertSupportMemoSchema, insertQaItemSchema,
   insertNoteSchema, insertLessonSchema, insertTagSchema, insertTagLinkSchema,
   insertFavoriteSchema, insertAiTaskSchema, insertFileSchema,
-  insertProjectReportSectionSchema,
+  insertProjectReportSectionSchema, insertProjectSectionSchema,
 } from "../shared/schema";
 
 // Mock auth: always return a local demo user
@@ -85,6 +85,22 @@ function toAssumptionResponse(a: Record<string, any>): Record<string, any> {
 function fromExternalModelBody(body: Record<string, any>): Record<string, any> {
   const mapped: Record<string, any> = { ...body };
   if ('storageLocation' in body) { mapped.fileOrUrlReference = body.storageLocation; delete mapped.storageLocation; }
+  return mapped;
+}
+
+function fromPlaybookBody(body: Record<string, any>): Record<string, any> {
+  const mapped: Record<string, any> = { ...body };
+  // Auto-generate slug from title if not provided
+  if (!mapped.slug && mapped.title) {
+    mapped.slug = mapped.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+  }
+  // Accept 'body' as alias for 'purpose'
+  if (!mapped.purpose && mapped.body) { mapped.purpose = mapped.body; delete mapped.body; }
+  // Accept 'engagementType' as alias for scope/whenToUse
+  if (mapped.engagementType && !mapped.whenToUse) { mapped.whenToUse = mapped.engagementType; delete mapped.engagementType; }
+  // Ensure required fields have defaults
+  if (!mapped.purpose) mapped.purpose = mapped.title;
+  if (!mapped.scope) mapped.scope = 'workspace';
   return mapped;
 }
 
@@ -229,7 +245,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(storage.getPlaybooks(req.query.workspaceId as string, req.query.scope as string));
   });
   app.post("/api/playbooks", (req, res) => {
-    const parsed = parseBody(insertPlaybookSchema, req.body);
+    const parsed = parseBody(insertPlaybookSchema, fromPlaybookBody(req.body));
     if ("error" in parsed) return res.status(400).json({ error: parsed.error });
     const pb = storage.createPlaybook({ ...parsed.data, createdBy: MOCK_USER.id });
     logActivity({ workspaceId: pb.workspaceId ?? undefined, action: "created", entityType: "playbook", entityId: pb.id });
@@ -839,6 +855,50 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.patch("/api/ai-tasks/:id", (req, res) => {
     const task = storage.updateAiTask(req.params.id, req.body);
     res.json(task);
+  });
+
+  // ─── Project Sections (custom, per-project) ──────────────────────────────────
+  app.get("/api/projects/:id/sections", (req, res) => {
+    const proj = storage.getProject(req.params.id);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    res.json(storage.getProjectSections(proj.id));
+  });
+
+  app.post("/api/projects/:id/sections", (req, res) => {
+    const proj = storage.getProject(req.params.id);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    const parsed = parseBody(insertProjectSectionSchema, {
+      ...req.body,
+      projectId: proj.id,
+      workspaceId: proj.workspaceId,
+    });
+    if ("error" in parsed) return res.status(400).json({ error: parsed.error });
+    const section = storage.createProjectSection(parsed.data);
+    logActivity({ workspaceId: proj.workspaceId, projectId: proj.id, action: "created", entityType: "project_section", entityId: section.id });
+    res.status(201).json(section);
+  });
+
+  app.patch("/api/projects/:id/sections/:sectionId", (req, res) => {
+    const proj = storage.getProject(req.params.id);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    const section = storage.updateProjectSection(req.params.sectionId, req.body);
+    if (!section) return res.status(404).json({ error: "Section not found" });
+    res.json(section);
+  });
+
+  app.delete("/api/projects/:id/sections/:sectionId", (req, res) => {
+    const ok = storage.deleteProjectSection(req.params.sectionId);
+    if (!ok) return res.status(404).json({ error: "Section not found" });
+    res.json({ success: true });
+  });
+
+  app.put("/api/projects/:id/sections/reorder", (req, res) => {
+    const proj = storage.getProject(req.params.id);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    const { orderedIds } = req.body;
+    if (!Array.isArray(orderedIds)) return res.status(400).json({ error: "orderedIds array required" });
+    storage.reorderProjectSections(proj.id, orderedIds);
+    res.json({ success: true });
   });
 
 }

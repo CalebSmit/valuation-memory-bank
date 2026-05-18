@@ -611,3 +611,19 @@ export const files = sqliteTable("files", {
 export const insertFileSchema = createInsertSchema(files).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertFile = z.infer<typeof insertFileSchema>;
 export type File = typeof files.$inferSelect;
+
+// ─── project_sections ────────────────────────────────────────────────────────
+export const projectSections = sqliteTable("project_sections", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  workspaceId: text("workspace_id").notNull(),
+  title: text("title").notNull(),
+  body: text("body"),
+  sectionType: text("section_type").notNull().default("custom"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+export const insertProjectSectionSchema = createInsertSchema(projectSections).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertProjectSection = z.infer<typeof insertProjectSectionSchema>;
+export type ProjectSection = typeof projectSections.$inferSelect;

@@ -59,7 +59,12 @@ export default function PlaybookDetail() {
   const isReadOnly = !!playbook.isSeed || !!playbook.isReadonly;
 
   function startEdit() {
-    setEditForm({ title: playbook.title, engagementType: playbook.engagementType ?? "", body: playbook.body ?? "" });
+    setEditForm({
+      title: playbook.title,
+      engagementType: (playbook as any).engagementType ?? playbook.whenToUse ?? "",
+      body: playbook.purpose ?? (playbook as any).body ?? "",
+      purpose: playbook.purpose ?? (playbook as any).body ?? "",
+    });
     setEditing(true);
   }
 
@@ -69,8 +74,10 @@ export default function PlaybookDetail() {
         <Button asChild variant="ghost" size="icon"><Link href="/playbooks"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-semibold text-foreground truncate">{playbook.title}</h1>
-          {playbook.engagementType && (
-            <p className="text-sm text-muted-foreground capitalize">{playbook.engagementType.replace(/_/g, " ")}</p>
+          {(playbook.whenToUse || (playbook as any).engagementType) && (
+            <p className="text-sm text-muted-foreground capitalize">
+              {(playbook.whenToUse || (playbook as any).engagementType || "").replace(/_/g, " ")}
+            </p>
           )}
         </div>
         <div className="flex gap-2">
@@ -108,7 +115,7 @@ export default function PlaybookDetail() {
         </div>
       ) : (
         <div className="rounded-lg border border-border bg-card p-5">
-          <MarkdownViewer content={playbook.body} />
+          <MarkdownViewer content={playbook.purpose ?? (playbook as any).body ?? ""} />
         </div>
       )}
 

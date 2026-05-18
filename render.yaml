@@ -19,3 +19,8 @@ services:
       - key: CORS_ORIGINS
         value: https://valuation-memory-bank.pages.dev
     healthCheckPath: /api/me
+    # Persistent disk — survives container restarts on Render free tier
+    disk:
+      name: valuation-memory-bank-data
+      mountPath: /var/data
+      sizeGB: 1

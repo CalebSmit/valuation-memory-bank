@@ -8,7 +8,7 @@ import {
   referenceCaseArtifacts, assumptions, sources, evidenceLinks,
   externalModelReferences, supportMemos, qaItems, notes,
   lessonsLearned, tags, tagLinks, favorites, activityLog,
-  aiTasks, files, reportSectionTemplates, projectReportSections,
+  aiTasks, files, reportSectionTemplates, projectReportSections, projectSections,
   type User, type InsertUser,
   type Workspace, type InsertWorkspace,
   type WorkspaceMembership, type InsertWorkspaceMembership,
@@ -36,6 +36,7 @@ import {
   type File, type InsertFile,
   type ReportSectionTemplate, type InsertReportSectionTemplate,
   type ProjectReportSection, type InsertProjectReportSection,
+  type ProjectSection, type InsertProjectSection,
 } from "../shared/schema";
 
 // Helper
@@ -221,6 +222,13 @@ export interface IStorage {
   upsertProjectReportSection(data: InsertProjectReportSection): ProjectReportSection;
   deleteProjectReportSection(projectId: string, templateSlug: string): boolean;
   getProjectReportProgress(projectId: string): { totalSections: number; counts: Record<string, number> };
+
+  // Project Sections
+  getProjectSections(projectId: string): ProjectSection[];
+  createProjectSection(data: InsertProjectSection): ProjectSection;
+  updateProjectSection(id: string, data: Partial<InsertProjectSection>): ProjectSection | undefined;
+  deleteProjectSection(id: string): boolean;
+  reorderProjectSections(projectId: string, orderedIds: string[]): void;
 
   // Search
   search(q: string, workspaceId?: string, projectId?: string, type?: string, includeReferenceCases?: boolean): SearchResult[];
@@ -834,6 +842,34 @@ export class DatabaseStorage implements IStorage {
     // Untouched sections are implicitly not_started — fold those in.
     counts.not_started = (counts.not_started ?? 0) + (totalSections - sections.length);
     return { totalSections, counts };
+  }
+
+  // Project Sections
+  getProjectSections(projectId: string) {
+    return db.select().from(projectSections)
+      .where(eq(projectSections.projectId, projectId))
+      .orderBy(asc(projectSections.sortOrder))
+      .all();
+  }
+  createProjectSection(data: InsertProjectSection) {
+    return db.insert(projectSections).values({ ...data, id: id(), createdAt: now(), updatedAt: now() }).returning().get()!;
+  }
+  updateProjectSection(sId: string, data: Partial<InsertProjectSection>) {
+    return db.update(projectSections).set({ ...data, updatedAt: now() }).where(eq(projectSections.id, sId)).returning().get();
+  }
+  deleteProjectSection(sId: string) {
+    const existing = db.select().from(projectSections).where(eq(projectSections.id, sId)).get();
+    if (!existing) return false;
+    db.delete(projectSections).where(eq(projectSections.id, sId)).run();
+    return true;
+  }
+  reorderProjectSections(projectId: string, orderedIds: string[]) {
+    for (let i = 0; i < orderedIds.length; i++) {
+      db.update(projectSections)
+        .set({ sortOrder: i, updatedAt: now() })
+        .where(and(eq(projectSections.id, orderedIds[i]), eq(projectSections.projectId, projectId)))
+        .run();
+    }
   }
 
   // Search
