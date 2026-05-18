@@ -1,64 +1,54 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
-import { Search, Bell, User, Moon, Sun } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { Link, useLocation } from "wouter";
+import { TrendingUp } from "lucide-react";
 
-const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/workspaces": "Workspaces",
-  "/projects": "Projects",
-  "/playbooks": "Methodology Playbooks",
-  "/frameworks": "Decision Frameworks",
-  "/principles": "Valuation Principles",
-  "/anti-patterns": "Anti-Patterns",
-  "/reasoning-templates": "Reasoning Templates",
-  "/reference-cases": "Reference Case Library",
-  "/sources": "Source Library",
-  "/qa": "Q&A Bank",
-  "/notes": "Notes",
-  "/lessons": "Lessons Learned",
-  "/search": "Search",
-  "/settings": "Settings",
-};
+const NAV_ITEMS: { path: string; label: string; matchPrefix?: string }[] = [
+  { path: "/projects", label: "Projects", matchPrefix: "/projects" },
+  { path: "/roadmap", label: "Roadmap" },
+  { path: "/settings", label: "Settings" },
+];
+
+function isActive(currentPath: string, item: { path: string; matchPrefix?: string }) {
+  if (item.matchPrefix) {
+    if (currentPath === "/" && item.matchPrefix === "/projects") return true;
+    return currentPath === item.path || currentPath.startsWith(item.matchPrefix + "/");
+  }
+  return currentPath === item.path;
+}
 
 export function TopNav() {
-  const [location, navigate] = useLocation();
-  const [searchQ, setSearchQ] = useState("");
-
-  const { data: user } = useQuery({ queryKey: ["/api/me"], queryFn: api.getMe });
-
-  const title = Object.entries(PAGE_TITLES).find(([path]) => location === path || (path !== "/" && location.startsWith(path)))?.[1] ?? "Valuation Memory Bank";
-
-  function handleSearchSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (searchQ.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQ.trim())}`);
-    }
-  }
+  const [location] = useLocation();
 
   return (
-    <div className="h-14 border-b border-border bg-card flex items-center gap-4 px-6 shrink-0">
-      <h1 className="text-base font-semibold text-foreground">{title}</h1>
-      <div className="flex-1" />
-      <form onSubmit={handleSearchSubmit} className="relative w-64">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-        <Input
-          placeholder="Search knowledge..."
-          className="pl-8 h-8 text-xs bg-muted border-border"
-          value={searchQ}
-          onChange={e => setSearchQ(e.target.value)}
-          data-testid="topnav-search"
-        />
-      </form>
-      <div className="flex items-center gap-1">
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
-          <User className="w-3.5 h-3.5" />
-          <span>{user?.name ?? "Demo Analyst"}</span>
-        </div>
+    <header className="h-14 border-b border-border bg-background shrink-0">
+      <div className="h-full px-6 flex items-center gap-8">
+        <Link href="/projects" className="flex items-center gap-2 text-foreground hover:text-foreground/90 transition-colors">
+          <TrendingUp className="w-5 h-5 text-primary" />
+          <span className="font-semibold tracking-tight">Valuation Roadmap</span>
+        </Link>
+
+        <nav className="flex items-center gap-1">
+          {NAV_ITEMS.map(item => {
+            const active = isActive(location, item);
+            return (
+              <Link
+                key={item.path}
+                href={item.path}
+                className={
+                  "px-3 h-14 flex items-center text-sm transition-colors border-b-2 " +
+                  (active
+                    ? "text-primary font-medium border-primary"
+                    : "text-muted-foreground hover:text-foreground border-transparent")
+                }
+                data-testid={`topnav-${item.label.toLowerCase()}`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="flex-1" />
       </div>
-    </div>
+    </header>
   );
 }

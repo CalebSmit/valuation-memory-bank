@@ -1,356 +1,334 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
 import { api } from "@/lib/api";
-import { useWorkspace } from "@/lib/workspace-context";
 import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/EmptyState";
-import { ReviewStatusBadge } from "@/components/ReviewStatusBadge";
-import { TagPills } from "@/components/TagPills";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Plus, Briefcase, Calendar } from "lucide-react";
 import {
-  FolderOpen,
-  Plus,
-  ChevronRight,
-  Trash2,
-  Calendar,
-} from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
-const ENGAGEMENT_TYPES = [
-  "business_valuation",
-  "fairness_opinion",
-  "purchase_price_allocation",
-  "esop_valuation",
-  "gift_estate",
-  "litigation_support",
-  "other",
+const WORKSPACE_ID = "ws_default";
+
+const INTEREST_OPTIONS = [
+  "100% equity",
+  "Controlling interest (>50%)",
+  "Minority interest (<50%)",
+  "Specific %",
 ];
 
-const INDUSTRIES = [
-  "Technology", "Healthcare", "Manufacturing", "Retail",
-  "Financial Services", "Real Estate", "Energy", "Media", "Other",
+const STANDARD_OF_VALUE_OPTIONS = [
+  "Fair Market Value",
+  "Fair Value",
+  "Investment Value",
+  "Other",
 ];
 
-export default function ProjectsPage() {
-  const { workspaceId } = useWorkspace();
-  const { toast } = useToast();
-  const [showCreate, setShowCreate] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [searchQ, setSearchQ] = useState("");
-  const [form, setForm] = useState({
-    title: "",
-    entityName: "",
-    engagementType: "business_valuation",
-    industry: "",
-    valuationDate: "",
-    description: "",
-    clientName: "",
+const ENGAGEMENT_TYPE_OPTIONS = [
+  "Full appraisal",
+  "Calculation engagement",
+  "Estimate of value",
+  "Preliminary analysis",
+];
+
+interface ProjectSummary {
+  id: string;
+  title?: string;
+  entityName?: string | null;
+  engagementType?: string | null;
+  reviewStatus?: string | null;
+  description?: string | null;
+  valuationDate?: string | null;
+  subjectInterest?: string | null;
+  standardOfValue?: string | null;
+}
+
+function StatusBadge({ status }: { status?: string | null }) {
+  const normalized = (status ?? "draft").toLowerCase();
+  const variant: Record<string, { label: string; cls: string }> = {
+    in_progress: { label: "In progress", cls: "bg-blue-500/15 text-blue-300 border-blue-500/30" },
+    complete: { label: "Complete", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" },
+    draft: { label: "Draft", cls: "bg-muted text-muted-foreground border-border" },
+    approved: { label: "Approved", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" },
+  };
+  const v = variant[normalized] ?? variant.draft;
+  return (
+    <Badge variant="outline" className={`${v.cls} text-[10px] uppercase tracking-wide`}>
+      {v.label}
+    </Badge>
+  );
+}
+
+function ProjectCard({ project, onClick }: { project: ProjectSummary; onClick: () => void }) {
+  const { data: summary } = useQuery<{ totalSteps: number; checkedSteps: number }>({
+    queryKey: ["/api/projects", project.id, "roadmap/summary"],
+    queryFn: () => api.getRoadmapSummary(project.id),
   });
 
-  const { data: projects = [], isLoading } = useQuery({
-    queryKey: ["/api/projects", workspaceId],
-    queryFn: () => api.getProjects(workspaceId),
-  });
+  const total = summary?.totalSteps ?? 0;
+  const checked = summary?.checkedSteps ?? 0;
+  const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
 
-  const createMutation = useMutation({
-    mutationFn: () =>
-      api.createProject({
-        ...form,
-        workspaceId: workspaceId ?? "ws_default",
-        reviewStatus: "draft",
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      setShowCreate(false);
-      resetForm();
-      toast({ title: "Project created" });
-    },
-    onError: (err: unknown) => {
-      const message = err instanceof Error ? err.message : "Could not create project";
-      toast({ title: "Create failed", description: message, variant: "destructive" });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.deleteProject(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      setDeleteId(null);
-      toast({ title: "Project deleted" });
-    },
-    onError: (err: unknown) => {
-      const message = err instanceof Error ? err.message : "Could not delete project";
-      toast({ title: "Delete failed", description: message, variant: "destructive" });
-    },
-  });
-
-  function resetForm() {
-    setForm({
-      title: "", entityName: "", engagementType: "business_valuation",
-      industry: "", valuationDate: "", description: "", clientName: "",
-    });
-  }
-
-  const filtered = projects.filter((p: any) => {
-    const q = searchQ.toLowerCase();
-    return !q || p.title?.toLowerCase().includes(q) || p.entityName?.toLowerCase().includes(q);
-  });
+  const companyName = project.entityName || project.title || "Untitled project";
+  const valuationDate = project.valuationDate
+    ? new Date(project.valuationDate).toLocaleDateString()
+    : "—";
 
   return (
-    <div className="space-y-6" data-testid="page-projects">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <Card
+      className="hover:border-primary/40 cursor-pointer transition-colors"
+      onClick={onClick}
+      data-testid={`project-card-${project.id}`}
+    >
+      <CardContent className="p-5 space-y-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-base text-foreground truncate">
+              {companyName}
+            </h3>
+            {project.standardOfValue && (
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                {project.standardOfValue}
+              </p>
+            )}
+          </div>
+          <StatusBadge status={project.reviewStatus} />
+        </div>
+
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          {project.engagementType && (
+            <span className="flex items-center gap-1">
+              <Briefcase className="w-3 h-3" />
+              {project.engagementType}
+            </span>
+          )}
+          <span className="flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            {valuationDate}
+          </span>
+        </div>
+
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Projects</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Engagement-specific valuation projects (not reference cases)
+          <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+            <span>Progress</span>
+            <span className="tabular-nums">
+              {checked} / {total} steps · {pct}%
+            </span>
+          </div>
+          <Progress value={pct} className="h-1.5" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function Projects() {
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const { data: projects = [], isLoading } = useQuery<ProjectSummary[]>({
+    queryKey: ["/api/projects", WORKSPACE_ID],
+    queryFn: () => api.getProjects(WORKSPACE_ID),
+  });
+
+  // Form state
+  const [companyName, setCompanyName] = useState("");
+  const [interest, setInterest] = useState<string>(INTEREST_OPTIONS[0]);
+  const [standardOfValue, setStandardOfValue] = useState<string>(STANDARD_OF_VALUE_OPTIONS[0]);
+  const [valuationDate, setValuationDate] = useState("");
+  const [engagementType, setEngagementType] = useState<string>(ENGAGEMENT_TYPE_OPTIONS[0]);
+  const [notes, setNotes] = useState("");
+
+  function resetForm() {
+    setCompanyName("");
+    setInterest(INTEREST_OPTIONS[0]);
+    setStandardOfValue(STANDARD_OF_VALUE_OPTIONS[0]);
+    setValuationDate("");
+    setEngagementType(ENGAGEMENT_TYPE_OPTIONS[0]);
+    setNotes("");
+  }
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const body = {
+        workspaceId: WORKSPACE_ID,
+        title: `${companyName} — ${standardOfValue}`,
+        entityName: companyName,
+        engagementType,
+        reviewStatus: "draft",
+        description: notes || null,
+        valuationDate: valuationDate || null,
+        subjectInterest: interest,
+        standardOfValue,
+      };
+      const res = await api.createProject(body);
+      return res.json();
+    },
+    onSuccess: (newProj: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", WORKSPACE_ID] });
+      setDialogOpen(false);
+      resetForm();
+      toast({ title: "Project created", description: companyName });
+      if (newProj?.id) navigate(`/projects/${newProj.id}`);
+    },
+    onError: (err: any) => {
+      toast({ title: "Could not create project", description: err.message, variant: "destructive" });
+    },
+  });
+
+  function handleCreate() {
+    if (!companyName.trim()) {
+      toast({ title: "Company name is required", variant: "destructive" });
+      return;
+    }
+    createMutation.mutate();
+  }
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Track your private-company valuation engagements through the standard 9-phase roadmap.
           </p>
         </div>
-        <Button size="sm" onClick={() => setShowCreate(true)} data-testid="button-new-project">
-          <Plus className="h-3.5 w-3.5 mr-1.5" />
-          New Project
+        <Button onClick={() => setDialogOpen(true)} data-testid="new-project-button">
+          <Plus className="w-4 h-4 mr-2" />
+          New project
         </Button>
       </div>
 
-      {/* Search */}
-      <Input
-        placeholder="Search projects..."
-        value={searchQ}
-        onChange={(e) => setSearchQ(e.target.value)}
-        className="max-w-sm"
-        data-testid="input-search-projects"
-      />
-
-      {/* List */}
       {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
-        </div>
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={FolderOpen}
-          title={searchQ ? "No matching projects" : "No projects yet"}
-          description={
-            searchQ
-              ? "Try a different search term."
-              : "Create a blank project to track a valuation engagement. Reference cases live in the Reference Cases library."
-          }
-          action={!searchQ ? { label: "New Project", onClick: () => setShowCreate(true) } : undefined}
-        />
+        <div className="text-sm text-muted-foreground">Loading projects…</div>
+      ) : projects.length === 0 ? (
+        <Card>
+          <CardContent className="p-12 text-center space-y-4">
+            <Briefcase className="w-10 h-10 mx-auto text-muted-foreground/50" />
+            <div>
+              <h3 className="font-medium">No projects yet</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Create your first valuation project to get started with the roadmap.
+              </p>
+            </div>
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create your first project
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="space-y-2">
-          {filtered.map((p: any) => (
-            <Card
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {projects.map(p => (
+            <ProjectCard
               key={p.id}
-              className="hover:border-slate-600 transition-colors"
-              data-testid={`project-card-${p.id}`}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <Link href={`/projects/${p.id}`} className="flex-1 min-w-0">
-                    <div className="flex items-start gap-3 cursor-pointer">
-                      <FolderOpen className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium text-sm text-foreground">{p.title}</p>
-                          <ReviewStatusBadge status={p.reviewStatus} />
-                        </div>
-                        {p.entityName && (
-                          <p className="text-xs text-muted-foreground">{p.entityName}</p>
-                        )}
-                        <div className="flex items-center gap-3 mt-1">
-                          {p.engagementType && (
-                            <span className="text-xs text-slate-500 capitalize">
-                              {p.engagementType.replace(/_/g, " ")}
-                            </span>
-                          )}
-                          {p.valuationDate && (
-                            <span className="text-xs text-slate-500 flex items-center gap-1">
-                              <Calendar className="h-2.5 w-2.5" />
-                              {p.valuationDate}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button asChild size="sm" variant="ghost" className="text-xs">
-                      <Link href={`/projects/${p.id}`}>
-                        Open <ChevronRight className="h-3 w-3 ml-0.5" />
-                      </Link>
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={() => setDeleteId(p.id)}
-                      data-testid={`button-delete-project-${p.id}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              project={p}
+              onClick={() => navigate(`/projects/${p.id}`)}
+            />
           ))}
         </div>
       )}
 
-      {/* Create Dialog */}
-      <Dialog open={showCreate} onOpenChange={(v) => { if (!v) { setShowCreate(false); resetForm(); } }}>
-        <DialogContent className="sm:max-w-lg" data-testid="dialog-create-project">
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>New Project</DialogTitle>
+            <DialogTitle>New project</DialogTitle>
+            <DialogDescription>
+              The standard 9-phase valuation roadmap will be created automatically.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto pr-1">
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Project Title *</Label>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="company">Subject company name *</Label>
               <Input
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="e.g. ABC Corp Valuation — 12/31/2024"
-                data-testid="input-project-title"
+                id="company"
+                value={companyName}
+                onChange={e => setCompanyName(e.target.value)}
+                placeholder="Acme Manufacturing, Inc."
               />
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Entity / Company Name</Label>
-              <Input
-                value={form.entityName}
-                onChange={(e) => setForm({ ...form, entityName: e.target.value })}
-                placeholder="e.g. ABC Corporation"
-                data-testid="input-project-entity"
-              />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Client Name</Label>
-              <Input
-                value={form.clientName}
-                onChange={(e) => setForm({ ...form, clientName: e.target.value })}
-                placeholder="e.g. John Smith"
-                data-testid="input-project-client"
-              />
-            </div>
+
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">Engagement Type</Label>
-                <Select
-                  value={form.engagementType}
-                  onValueChange={(v) => setForm({ ...form, engagementType: v })}
-                >
-                  <SelectTrigger data-testid="select-engagement-type">
-                    <SelectValue />
-                  </SelectTrigger>
+              <div className="space-y-1.5">
+                <Label>Interest being valued</Label>
+                <Select value={interest} onValueChange={setInterest}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {ENGAGEMENT_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t.replace(/_/g, " ")}
-                      </SelectItem>
+                    {INTEREST_OPTIONS.map(o => (
+                      <SelectItem key={o} value={o}>{o}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">Industry</Label>
-                <Select
-                  value={form.industry || "Other"}
-                  onValueChange={(v) => setForm({ ...form, industry: v })}
-                >
-                  <SelectTrigger data-testid="select-industry">
-                    <SelectValue placeholder="Select..." />
-                  </SelectTrigger>
+              <div className="space-y-1.5">
+                <Label>Standard of value</Label>
+                <Select value={standardOfValue} onValueChange={setStandardOfValue}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {INDUSTRIES.map((i) => (
-                      <SelectItem key={i} value={i}>{i}</SelectItem>
+                    {STANDARD_OF_VALUE_OPTIONS.map(o => (
+                      <SelectItem key={o} value={o}>{o}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Valuation Date</Label>
-              <Input
-                type="date"
-                value={form.valuationDate}
-                onChange={(e) => setForm({ ...form, valuationDate: e.target.value })}
-                data-testid="input-valuation-date"
-              />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="vdate">Valuation date</Label>
+                <Input
+                  id="vdate"
+                  type="date"
+                  value={valuationDate}
+                  onChange={e => setValuationDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Engagement type</Label>
+                <Select value={engagementType} onValueChange={setEngagementType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ENGAGEMENT_TYPE_OPTIONS.map(o => (
+                      <SelectItem key={o} value={o}>{o}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Description / Scope</Label>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="notes">Description / notes</Label>
               <Textarea
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Brief engagement description..."
+                id="notes"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Optional context, scope notes, or anything you want to remember about this engagement."
                 rows={3}
-                data-testid="input-project-description"
               />
             </div>
           </div>
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowCreate(false); resetForm(); }}>Cancel</Button>
-            <Button
-              onClick={() => createMutation.mutate()}
-              disabled={!form.title.trim() || createMutation.isPending}
-              data-testid="button-save-project"
-            >
-              {createMutation.isPending ? "Creating..." : "Create Project"}
+            <Button variant="ghost" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Creating…" : "Create project"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirm */}
-      <AlertDialog open={!!deleteId} onOpenChange={(v) => !v && setDeleteId(null)}>
-        <AlertDialogContent data-testid="dialog-delete-project">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Project?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently deletes the project and all associated data. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground"
-              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
-              data-testid="button-confirm-delete-project"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

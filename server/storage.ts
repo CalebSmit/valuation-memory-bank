@@ -9,6 +9,7 @@ import {
   externalModelReferences, supportMemos, qaItems, notes,
   lessonsLearned, tags, tagLinks, favorites, activityLog,
   aiTasks, files, reportSectionTemplates, projectReportSections, projectSections,
+  projectRoadmapPhases, projectRoadmapSteps,
   type User, type InsertUser,
   type Workspace, type InsertWorkspace,
   type WorkspaceMembership, type InsertWorkspaceMembership,
@@ -37,6 +38,8 @@ import {
   type ReportSectionTemplate, type InsertReportSectionTemplate,
   type ProjectReportSection, type InsertProjectReportSection,
   type ProjectSection, type InsertProjectSection,
+  type RoadmapPhase, type InsertRoadmapPhase,
+  type RoadmapStep, type InsertRoadmapStep,
 } from "../shared/schema";
 
 // Helper
@@ -232,6 +235,24 @@ export interface IStorage {
   updateProjectSection(id: string, data: Partial<InsertProjectSection>): ProjectSection | undefined;
   deleteProjectSection(id: string): boolean;
   reorderProjectSections(projectId: string, orderedIds: string[]): void;
+
+  // Roadmap Phases
+  getRoadmapPhases(projectId: string): RoadmapPhase[];
+  getRoadmapPhase(id: string): RoadmapPhase | undefined;
+  createRoadmapPhase(data: InsertRoadmapPhase): RoadmapPhase;
+  updateRoadmapPhase(id: string, data: Partial<InsertRoadmapPhase>): RoadmapPhase | undefined;
+  deleteRoadmapPhase(id: string): boolean;
+  reorderRoadmapPhases(projectId: string, orderedIds: string[]): void;
+
+  // Roadmap Steps
+  getRoadmapSteps(phaseId: string): RoadmapStep[];
+  getRoadmapStepsByProject(projectId: string): RoadmapStep[];
+  getRoadmapStep(id: string): RoadmapStep | undefined;
+  createRoadmapStep(data: InsertRoadmapStep): RoadmapStep;
+  updateRoadmapStep(id: string, data: Partial<InsertRoadmapStep>): RoadmapStep | undefined;
+  deleteRoadmapStep(id: string): boolean;
+  reorderRoadmapSteps(phaseId: string, orderedIds: string[]): void;
+  getRoadmapSummary(projectId: string): { totalSteps: number; checkedSteps: number };
 
   // Search
   search(q: string, workspaceId?: string, projectId?: string, type?: string, includeReferenceCases?: boolean): SearchResult[];
@@ -883,6 +904,81 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(projectSections.id, orderedIds[i]), eq(projectSections.projectId, projectId)))
         .run();
     }
+  }
+
+  // Roadmap Phases
+  getRoadmapPhases(projectId: string) {
+    return db.select().from(projectRoadmapPhases)
+      .where(eq(projectRoadmapPhases.projectId, projectId))
+      .orderBy(asc(projectRoadmapPhases.sortOrder))
+      .all();
+  }
+  getRoadmapPhase(pId: string) {
+    return db.select().from(projectRoadmapPhases).where(eq(projectRoadmapPhases.id, pId)).get();
+  }
+  createRoadmapPhase(data: InsertRoadmapPhase) {
+    return db.insert(projectRoadmapPhases).values({ ...data, id: id(), createdAt: now(), updatedAt: now() }).returning().get()!;
+  }
+  updateRoadmapPhase(pId: string, data: Partial<InsertRoadmapPhase>) {
+    return db.update(projectRoadmapPhases).set({ ...data, updatedAt: now() }).where(eq(projectRoadmapPhases.id, pId)).returning().get();
+  }
+  deleteRoadmapPhase(pId: string) {
+    const existing = db.select().from(projectRoadmapPhases).where(eq(projectRoadmapPhases.id, pId)).get();
+    if (!existing) return false;
+    db.delete(projectRoadmapSteps).where(eq(projectRoadmapSteps.phaseId, pId)).run();
+    db.delete(projectRoadmapPhases).where(eq(projectRoadmapPhases.id, pId)).run();
+    return true;
+  }
+  reorderRoadmapPhases(projectId: string, orderedIds: string[]) {
+    for (let i = 0; i < orderedIds.length; i++) {
+      db.update(projectRoadmapPhases)
+        .set({ sortOrder: i, updatedAt: now() })
+        .where(and(eq(projectRoadmapPhases.id, orderedIds[i]), eq(projectRoadmapPhases.projectId, projectId)))
+        .run();
+    }
+  }
+
+  // Roadmap Steps
+  getRoadmapSteps(phaseId: string) {
+    return db.select().from(projectRoadmapSteps)
+      .where(eq(projectRoadmapSteps.phaseId, phaseId))
+      .orderBy(asc(projectRoadmapSteps.sortOrder))
+      .all();
+  }
+  getRoadmapStepsByProject(projectId: string) {
+    return db.select().from(projectRoadmapSteps)
+      .where(eq(projectRoadmapSteps.projectId, projectId))
+      .all();
+  }
+  getRoadmapStep(sId: string) {
+    return db.select().from(projectRoadmapSteps).where(eq(projectRoadmapSteps.id, sId)).get();
+  }
+  createRoadmapStep(data: InsertRoadmapStep) {
+    return db.insert(projectRoadmapSteps).values({ ...data, id: id(), createdAt: now(), updatedAt: now() }).returning().get()!;
+  }
+  updateRoadmapStep(sId: string, data: Partial<InsertRoadmapStep>) {
+    return db.update(projectRoadmapSteps).set({ ...data, updatedAt: now() }).where(eq(projectRoadmapSteps.id, sId)).returning().get();
+  }
+  deleteRoadmapStep(sId: string) {
+    const existing = db.select().from(projectRoadmapSteps).where(eq(projectRoadmapSteps.id, sId)).get();
+    if (!existing) return false;
+    db.delete(projectRoadmapSteps).where(eq(projectRoadmapSteps.id, sId)).run();
+    return true;
+  }
+  reorderRoadmapSteps(phaseId: string, orderedIds: string[]) {
+    for (let i = 0; i < orderedIds.length; i++) {
+      db.update(projectRoadmapSteps)
+        .set({ sortOrder: i, updatedAt: now() })
+        .where(and(eq(projectRoadmapSteps.id, orderedIds[i]), eq(projectRoadmapSteps.phaseId, phaseId)))
+        .run();
+    }
+  }
+  getRoadmapSummary(projectId: string) {
+    const steps = this.getRoadmapStepsByProject(projectId);
+    return {
+      totalSteps: steps.length,
+      checkedSteps: steps.filter(s => s.isChecked).length,
+    };
   }
 
   // Search

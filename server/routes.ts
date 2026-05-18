@@ -1,7 +1,7 @@
 import { type Express, Request, Response } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
-import { initDb } from "./init-db";
+import { initDb, seedDefaultRoadmap } from "./init-db";
 import { tursoSync } from "./db";
 import { z } from "zod";
 import {
@@ -13,6 +13,7 @@ import {
   insertNoteSchema, insertLessonSchema, insertTagSchema, insertTagLinkSchema,
   insertFavoriteSchema, insertAiTaskSchema, insertFileSchema,
   insertProjectReportSectionSchema, insertProjectSectionSchema,
+  insertRoadmapPhaseSchema, insertRoadmapStepSchema,
 } from "../shared/schema";
 
 // Mock auth: always return a local demo user
@@ -255,12 +256,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/projects", (req, res) => {
     res.json(storage.getProjects(req.query.workspaceId as string).map(toProjectResponse));
   });
-  app.post("/api/projects", (req, res) => {
+  app.post("/api/projects", async (req, res) => {
     const mapped = fromProjectBody(req.body);
     const parsed = parseBody(insertProjectSchema, mapped);
     if ("error" in parsed) return res.status(400).json({ error: parsed.error });
     const proj = storage.createProject({ ...parsed.data, createdBy: MOCK_USER.id, updatedBy: MOCK_USER.id });
     logActivity({ workspaceId: proj.workspaceId, projectId: proj.id, action: "created", entityType: "project", entityId: proj.id, entityTitle: proj.name });
+    try {
+      await seedDefaultRoadmap(proj.id, proj.workspaceId);
+    } catch (err) {
+      console.error("[routes] seedDefaultRoadmap failed", err);
+    }
     res.status(201).json(toProjectResponse(proj as any));
   });
   app.get("/api/projects/:id", (req, res) => {
@@ -967,6 +973,115 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!Array.isArray(orderedIds)) return res.status(400).json({ error: "orderedIds array required" });
     storage.reorderProjectSections(proj.id, orderedIds);
     res.json({ success: true });
+  });
+
+  // ─── Roadmap: Summary ───────────────────────────────────────────────────────
+  app.get("/api/projects/:id/roadmap/summary", (req, res) => {
+    const proj = storage.getProject(req.params.id);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    res.json(storage.getRoadmapSummary(proj.id));
+  });
+
+  // ─── Roadmap: Phases ────────────────────────────────────────────────────────
+  app.get("/api/projects/:id/roadmap/phases", (req, res) => {
+    const proj = storage.getProject(req.params.id);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    res.json(storage.getRoadmapPhases(proj.id));
+  });
+
+  // The literal "reorder" route MUST be registered before the :phaseId routes
+  app.post("/api/projects/:id/roadmap/phases/reorder", (req, res) => {
+    const proj = storage.getProject(req.params.id);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    const { orderedIds } = req.body;
+    if (!Array.isArray(orderedIds)) return res.status(400).json({ error: "orderedIds array required" });
+    storage.reorderRoadmapPhases(proj.id, orderedIds);
+    res.json({ success: true });
+  });
+
+  app.post("/api/projects/:id/roadmap/phases", (req, res) => {
+    const proj = storage.getProject(req.params.id);
+    if (!proj) return res.status(404).json({ error: "Project not found" });
+    const body = {
+      projectId: proj.id,
+      workspaceId: proj.workspaceId,
+      title: req.body.title ?? "New phase",
+      sortOrder: req.body.sortOrder ?? storage.getRoadmapPhases(proj.id).length,
+      isCollapsed: req.body.isCollapsed ?? false,
+    };
+    const parsed = parseBody(insertRoadmapPhaseSchema, body);
+    if ("error" in parsed) return res.status(400).json({ error: parsed.error });
+    const phase = storage.createRoadmapPhase(parsed.data);
+    res.status(201).json(phase);
+  });
+
+  app.patch("/api/projects/:id/roadmap/phases/:phaseId", (req, res) => {
+    const phase = storage.getRoadmapPhase(req.params.phaseId);
+    if (!phase || phase.projectId !== req.params.id) return res.status(404).json({ error: "Phase not found" });
+    const updated = storage.updateRoadmapPhase(req.params.phaseId, req.body);
+    res.json(updated);
+  });
+
+  app.delete("/api/projects/:id/roadmap/phases/:phaseId", (req, res) => {
+    const phase = storage.getRoadmapPhase(req.params.phaseId);
+    if (!phase || phase.projectId !== req.params.id) return res.status(404).json({ error: "Phase not found" });
+    storage.deleteRoadmapPhase(req.params.phaseId);
+    res.status(204).end();
+  });
+
+  // ─── Roadmap: Steps ─────────────────────────────────────────────────────────
+  app.get("/api/projects/:id/roadmap/phases/:phaseId/steps", (req, res) => {
+    const phase = storage.getRoadmapPhase(req.params.phaseId);
+    if (!phase || phase.projectId !== req.params.id) return res.status(404).json({ error: "Phase not found" });
+    res.json(storage.getRoadmapSteps(req.params.phaseId));
+  });
+
+  // The literal "reorder" route MUST be registered before the :stepId routes
+  app.post("/api/projects/:id/roadmap/phases/:phaseId/steps/reorder", (req, res) => {
+    const phase = storage.getRoadmapPhase(req.params.phaseId);
+    if (!phase || phase.projectId !== req.params.id) return res.status(404).json({ error: "Phase not found" });
+    const { orderedIds } = req.body;
+    if (!Array.isArray(orderedIds)) return res.status(400).json({ error: "orderedIds array required" });
+    storage.reorderRoadmapSteps(req.params.phaseId, orderedIds);
+    res.json({ success: true });
+  });
+
+  app.post("/api/projects/:id/roadmap/phases/:phaseId/steps", (req, res) => {
+    const phase = storage.getRoadmapPhase(req.params.phaseId);
+    if (!phase || phase.projectId !== req.params.id) return res.status(404).json({ error: "Phase not found" });
+    const body = {
+      phaseId: phase.id,
+      projectId: phase.projectId,
+      workspaceId: phase.workspaceId,
+      title: req.body.title ?? "New step",
+      isChecked: req.body.isChecked ?? false,
+      status: req.body.status ?? "not_started",
+      notes: req.body.notes ?? null,
+      whyThisMatters: req.body.whyThisMatters ?? null,
+      sortOrder: req.body.sortOrder ?? storage.getRoadmapSteps(phase.id).length,
+    };
+    const parsed = parseBody(insertRoadmapStepSchema, body);
+    if ("error" in parsed) return res.status(400).json({ error: parsed.error });
+    const step = storage.createRoadmapStep(parsed.data);
+    res.status(201).json(step);
+  });
+
+  app.patch("/api/projects/:id/roadmap/phases/:phaseId/steps/:stepId", (req, res) => {
+    const step = storage.getRoadmapStep(req.params.stepId);
+    if (!step || step.projectId !== req.params.id || step.phaseId !== req.params.phaseId) {
+      return res.status(404).json({ error: "Step not found" });
+    }
+    const updated = storage.updateRoadmapStep(req.params.stepId, req.body);
+    res.json(updated);
+  });
+
+  app.delete("/api/projects/:id/roadmap/phases/:phaseId/steps/:stepId", (req, res) => {
+    const step = storage.getRoadmapStep(req.params.stepId);
+    if (!step || step.projectId !== req.params.id || step.phaseId !== req.params.phaseId) {
+      return res.status(404).json({ error: "Step not found" });
+    }
+    storage.deleteRoadmapStep(req.params.stepId);
+    res.status(204).end();
   });
 
 }

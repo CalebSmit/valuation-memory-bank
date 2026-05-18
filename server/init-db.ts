@@ -9,6 +9,7 @@
  */
 import { nanoid } from "nanoid";
 import { REPORT_SECTION_TEMPLATES } from "../shared/report-section-template-data";
+import { ROADMAP_SEED_PHASES } from "./roadmap-seed-data";
 
 function now() { return new Date().toISOString(); }
 
@@ -21,7 +22,7 @@ interface DbRunner {
   run(sql: string, args?: any[]): Promise<{ rowsAffected: number }>;
 }
 
-function buildRunner(): DbRunner {
+export function buildRunner(): DbRunner {
   if (process.env.TURSO_DATABASE_URL) {
     const { createClient } = require("@libsql/client") as typeof import("@libsql/client");
     const client = createClient({
@@ -561,6 +562,33 @@ export async function initDb() {
       updated_at TEXT NOT NULL
     )`,
     `CREATE INDEX IF NOT EXISTS idx_project_report_sections_project ON project_report_sections(project_id)`,
+    `CREATE TABLE IF NOT EXISTS project_roadmap_phases (
+      id TEXT PRIMARY KEY,
+      project_id TEXT NOT NULL,
+      workspace_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_collapsed INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_project_roadmap_phases_project ON project_roadmap_phases(project_id)`,
+    `CREATE TABLE IF NOT EXISTS project_roadmap_steps (
+      id TEXT PRIMARY KEY,
+      phase_id TEXT NOT NULL,
+      project_id TEXT NOT NULL,
+      workspace_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      is_checked INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'not_started',
+      notes TEXT,
+      why_this_matters TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_project_roadmap_steps_phase ON project_roadmap_steps(phase_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_project_roadmap_steps_project ON project_roadmap_steps(project_id)`,
   ];
 
   for (const sql of createTables) {
@@ -1790,4 +1818,37 @@ Below nominal GDP growth (~3.9% CBO) \u2014 per Damodaran, terminal growth excee
     }
   }
   console.log("[init-db] Knowledge content seeded successfully");
+}
+
+// ── Default roadmap seed ─────────────────────────────────────────────────────
+// Called from POST /api/projects so every new project starts with the standard
+// 9-phase valuation workflow pre-populated.
+export async function seedDefaultRoadmap(
+  projectId: string,
+  workspaceId: string,
+  runner?: DbRunner,
+): Promise<void> {
+  const db = runner ?? buildRunner();
+  const ts = now();
+
+  for (let phaseIdx = 0; phaseIdx < ROADMAP_SEED_PHASES.length; phaseIdx++) {
+    const phase = ROADMAP_SEED_PHASES[phaseIdx];
+    const phaseId = nanoid();
+    await db.run(
+      `INSERT INTO project_roadmap_phases
+       (id, project_id, workspace_id, title, sort_order, is_collapsed, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
+      [phaseId, projectId, workspaceId, phase.title, phaseIdx, ts, ts],
+    );
+
+    for (let stepIdx = 0; stepIdx < phase.steps.length; stepIdx++) {
+      const step = phase.steps[stepIdx];
+      await db.run(
+        `INSERT INTO project_roadmap_steps
+         (id, phase_id, project_id, workspace_id, title, is_checked, status, notes, why_this_matters, sort_order, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 0, 'not_started', NULL, ?, ?, ?, ?)`,
+        [nanoid(), phaseId, projectId, workspaceId, step.title, step.whyThisMatters, stepIdx, ts, ts],
+      );
+    }
+  }
 }

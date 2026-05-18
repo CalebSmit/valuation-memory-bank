@@ -628,3 +628,37 @@ export const projectSections = sqliteTable("project_sections", {
 export const insertProjectSectionSchema = createInsertSchema(projectSections).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertProjectSection = z.infer<typeof insertProjectSectionSchema>;
 export type ProjectSection = typeof projectSections.$inferSelect;
+
+// ─── project_roadmap_phases ───────────────────────────────────────────────────
+export const projectRoadmapPhases = sqliteTable("project_roadmap_phases", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  workspaceId: text("workspace_id").notNull(),
+  title: text("title").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isCollapsed: integer("is_collapsed", { mode: "boolean" }).default(false),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+export const insertRoadmapPhaseSchema = createInsertSchema(projectRoadmapPhases).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertRoadmapPhase = z.infer<typeof insertRoadmapPhaseSchema>;
+export type RoadmapPhase = typeof projectRoadmapPhases.$inferSelect;
+
+// ─── project_roadmap_steps ────────────────────────────────────────────────────
+export const projectRoadmapSteps = sqliteTable("project_roadmap_steps", {
+  id: text("id").primaryKey(),
+  phaseId: text("phase_id").notNull(),
+  projectId: text("project_id").notNull(),
+  workspaceId: text("workspace_id").notNull(),
+  title: text("title").notNull(),
+  isChecked: integer("is_checked", { mode: "boolean" }).default(false),
+  status: text("status").notNull().default("not_started"),
+  notes: text("notes"),
+  whyThisMatters: text("why_this_matters"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+export const insertRoadmapStepSchema = createInsertSchema(projectRoadmapSteps).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertRoadmapStep = z.infer<typeof insertRoadmapStepSchema>;
+export type RoadmapStep = typeof projectRoadmapSteps.$inferSelect;

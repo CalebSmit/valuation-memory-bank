@@ -199,4 +199,28 @@ export const api = {
     apiRequest("DELETE", `/api/projects/${projectId}/sections/${sectionId}`),
   reorderProjectSections: (projectId: string, orderedIds: string[]) =>
     apiRequest("PUT", `/api/projects/${projectId}/sections/reorder`, { orderedIds }),
+
+  // Roadmap
+  getRoadmapSummary: (projectId: string) =>
+    apiGet(`/api/projects/${projectId}/roadmap/summary`),
+  getRoadmapPhases: (projectId: string) =>
+    apiGet(`/api/projects/${projectId}/roadmap/phases`),
+  createRoadmapPhase: (projectId: string, data: any) =>
+    apiRequest("POST", `/api/projects/${projectId}/roadmap/phases`, data),
+  updateRoadmapPhase: (projectId: string, phaseId: string, data: any) =>
+    apiRequest("PATCH", `/api/projects/${projectId}/roadmap/phases/${phaseId}`, data),
+  deleteRoadmapPhase: (projectId: string, phaseId: string) =>
+    apiRequest("DELETE", `/api/projects/${projectId}/roadmap/phases/${phaseId}`),
+  reorderRoadmapPhases: (projectId: string, orderedIds: string[]) =>
+    apiRequest("POST", `/api/projects/${projectId}/roadmap/phases/reorder`, { orderedIds }),
+  getRoadmapSteps: (projectId: string, phaseId: string) =>
+    apiGet(`/api/projects/${projectId}/roadmap/phases/${phaseId}/steps`),
+  createRoadmapStep: (projectId: string, phaseId: string, data: any) =>
+    apiRequest("POST", `/api/projects/${projectId}/roadmap/phases/${phaseId}/steps`, data),
+  updateRoadmapStep: (projectId: string, phaseId: string, stepId: string, data: any) =>
+    apiRequest("PATCH", `/api/projects/${projectId}/roadmap/phases/${phaseId}/steps/${stepId}`, data),
+  deleteRoadmapStep: (projectId: string, phaseId: string, stepId: string) =>
+    apiRequest("DELETE", `/api/projects/${projectId}/roadmap/phases/${phaseId}/steps/${stepId}`),
+  reorderRoadmapSteps: (projectId: string, phaseId: string, orderedIds: string[]) =>
+    apiRequest("POST", `/api/projects/${projectId}/roadmap/phases/${phaseId}/steps/reorder`, { orderedIds }),
 };
