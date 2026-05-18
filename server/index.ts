@@ -4,6 +4,7 @@ import type { Request } from 'express';
 import cors from 'cors';
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
+import { syncFromTurso } from "./db";
 import { createServer } from "node:http";
 
 const app = express();
@@ -75,6 +76,8 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Pull latest DB state from Turso before initializing routes
+  await syncFromTurso();
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
