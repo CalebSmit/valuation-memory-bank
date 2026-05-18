@@ -10,6 +10,7 @@
 import { nanoid } from "nanoid";
 import { REPORT_SECTION_TEMPLATES } from "../shared/report-section-template-data";
 import { ROADMAP_SEED_PHASES } from "./roadmap-seed-data";
+import { ROADMAP_GUIDANCE_QUESTIONS } from "./roadmap-guidance-data";
 
 function now() { return new Date().toISOString(); }
 
@@ -583,6 +584,8 @@ export async function initDb() {
       status TEXT NOT NULL DEFAULT 'not_started',
       notes TEXT,
       why_this_matters TEXT,
+      guidance_questions TEXT,
+      guidance_answers TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -842,6 +845,8 @@ export async function initDb() {
     ["project_report_sections", "updated_by TEXT"],
     ["project_report_sections", "linked_file_ids TEXT"],
     ["project_report_sections", "review_status TEXT DEFAULT 'draft'"],
+    ["project_roadmap_steps", "guidance_questions TEXT"],
+    ["project_roadmap_steps", "guidance_answers TEXT"],
   ];
 
   for (const [table, colDef] of migrations) {
@@ -850,6 +855,27 @@ export async function initDb() {
     } catch {
       // Column already exists — safe to ignore
     }
+  }
+
+  // ── Backfill guidance_questions on existing roadmap steps ───────────────────
+  // Idempotent: only updates rows where the column is currently NULL and the
+  // step title is in the seed map. Safe to run on every startup.
+  try {
+    const { rows: stepRows } = await db.query(
+      "SELECT id, title FROM project_roadmap_steps WHERE guidance_questions IS NULL",
+    );
+    for (const row of stepRows) {
+      const title = row.title as string;
+      const questions = ROADMAP_GUIDANCE_QUESTIONS[title];
+      if (questions && questions.length > 0) {
+        await db.run(
+          "UPDATE project_roadmap_steps SET guidance_questions = ?, updated_at = ? WHERE id = ?",
+          [JSON.stringify(questions), now(), row.id],
+        );
+      }
+    }
+  } catch (err) {
+    console.error("[init-db] guidance backfill failed", err);
   }
 
   // ── Seed demo user ──────────────────────────────────────────────────────────
@@ -1843,11 +1869,13 @@ export async function seedDefaultRoadmap(
 
     for (let stepIdx = 0; stepIdx < phase.steps.length; stepIdx++) {
       const step = phase.steps[stepIdx];
+      const questions = step.guidanceQuestions ?? ROADMAP_GUIDANCE_QUESTIONS[step.title];
+      const guidanceJson = questions && questions.length > 0 ? JSON.stringify(questions) : null;
       await db.run(
         `INSERT INTO project_roadmap_steps
-         (id, phase_id, project_id, workspace_id, title, is_checked, status, notes, why_this_matters, sort_order, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 0, 'not_started', NULL, ?, ?, ?, ?)`,
-        [nanoid(), phaseId, projectId, workspaceId, step.title, step.whyThisMatters, stepIdx, ts, ts],
+         (id, phase_id, project_id, workspace_id, title, is_checked, status, notes, why_this_matters, guidance_questions, guidance_answers, sort_order, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 0, 'not_started', NULL, ?, ?, NULL, ?, ?, ?)`,
+        [nanoid(), phaseId, projectId, workspaceId, step.title, step.whyThisMatters, guidanceJson, stepIdx, ts, ts],
       );
     }
   }

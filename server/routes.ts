@@ -1071,7 +1071,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!step || step.projectId !== req.params.id || step.phaseId !== req.params.phaseId) {
       return res.status(404).json({ error: "Step not found" });
     }
-    const updated = storage.updateRoadmapStep(req.params.stepId, req.body);
+    const body: Record<string, any> = { ...req.body };
+    // Accept arrays/objects for guidanceQuestions / guidanceAnswers and serialize
+    if ("guidanceQuestions" in body && body.guidanceQuestions !== null && typeof body.guidanceQuestions !== "string") {
+      body.guidanceQuestions = JSON.stringify(body.guidanceQuestions);
+    }
+    if ("guidanceAnswers" in body && body.guidanceAnswers !== null && typeof body.guidanceAnswers !== "string") {
+      body.guidanceAnswers = JSON.stringify(body.guidanceAnswers);
+    }
+    const updated = storage.updateRoadmapStep(req.params.stepId, body);
     res.json(updated);
   });
 

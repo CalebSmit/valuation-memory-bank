@@ -655,6 +655,8 @@ export const projectRoadmapSteps = sqliteTable("project_roadmap_steps", {
   status: text("status").notNull().default("not_started"),
   notes: text("notes"),
   whyThisMatters: text("why_this_matters"),
+  guidanceQuestions: text("guidance_questions"),
+  guidanceAnswers: text("guidance_answers"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),

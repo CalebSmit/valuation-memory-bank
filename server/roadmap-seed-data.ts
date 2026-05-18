@@ -1,6 +1,7 @@
 export interface RoadmapSeedStep {
   title: string;
   whyThisMatters: string;
+  guidanceQuestions?: string[];
 }
 
 export interface RoadmapSeedPhase {
