@@ -482,7 +482,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(rc);
   });
   app.patch("/api/reference-cases/:caseId", (req, res) => {
-    res.status(403).json({ error: "Reference cases are read-only" });
+    try {
+      const rc = storage.updateReferenceCase(req.params.caseId, req.body);
+      if (!rc) return res.status(404).json({ error: "Not found" });
+      tursoSync().catch(() => {});
+      res.json(rc);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
   app.get("/api/reference-cases/:caseId/artifacts", (req, res) => {
     res.json(storage.getReferenceArtifacts(req.params.caseId));
@@ -499,7 +504,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(art);
   });
   app.patch("/api/reference-artifacts/:id", (req, res) => {
-    res.status(403).json({ error: "Reference artifacts are read-only" });
+    try {
+      const art = storage.updateReferenceArtifact(req.params.id, req.body);
+      if (!art) return res.status(404).json({ error: "Not found" });
+      tursoSync().catch(() => {});
+      res.json(art);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+  app.delete("/api/reference-artifacts/:id", (req, res) => {
+    const deleted = storage.deleteReferenceArtifact(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Not found" });
+    tursoSync().catch(() => {});
+    res.status(204).send();
   });
   app.post("/api/reference-artifacts/:id/clone", (req, res) => {
     const { workspaceId, projectId } = req.body;

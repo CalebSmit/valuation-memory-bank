@@ -1507,7 +1507,7 @@ This report is intended for use solely by [Client Name] and [co-intended users, 
     const rcId = nanoid();
     await db.run(
       `INSERT INTO reference_cases (id, case_id, title, description, source_label, is_seed, is_readonly, clonable, created_at, updated_at)
-       VALUES (?, 'dordt_gsu_2025', ?, ?, ?, 1, 1, 1, ?, ?)`,
+       VALUES (?, 'dordt_gsu_2025', ?, ?, ?, 1, 0, 1, ?, ?)`,
       [rcId,
        "Dordt University \u2014 GSU 2025 National Competition (2nd Place)",
        "A 51% controlling, non-marketable interest in a Texas PPE/workwear distributor. Prepared for the Georgia State University Business Valuation Competition 2025. Dordt University placed 2nd nationally. Applies USPAP Standards 9 & 10 and ASA BVS-I through VIII. Final value: $14,980,000. Team: Caleb Smit, Nolan Karel, Samuel Zylstra, Caden Koole.",
@@ -1784,7 +1784,7 @@ Below nominal GDP growth (~3.9% CBO) \u2014 per Damodaran, terminal growth excee
       await db.run(
         `INSERT INTO reference_case_artifacts
          (id, case_id, artifact_type, title, body, source_note, is_seed, is_readonly, clonable, review_status, created_at, updated_at)
-         VALUES (?, 'dordt_gsu_2025', ?, ?, ?, ?, 1, 1, 1, 'approved', ?, ?)`,
+         VALUES (?, 'dordt_gsu_2025', ?, ?, ?, ?, 1, 0, 1, 'approved', ?, ?)`,
         [artId, art.artifactType, art.title, art.body, art.sourceNote, ts, ts]
       );
     }

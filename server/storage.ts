@@ -114,11 +114,14 @@ export interface IStorage {
   getReferenceCases(): ReferenceCase[];
   getReferenceCase(caseId: string): ReferenceCase | undefined;
   createReferenceCase(data: InsertReferenceCase): ReferenceCase;
+  updateReferenceCase(caseId: string, data: Partial<InsertReferenceCase>): ReferenceCase | undefined;
 
   // Reference Artifacts
   getReferenceArtifacts(caseId: string): ReferenceArtifact[];
   getReferenceArtifact(id: string): ReferenceArtifact | undefined;
   createReferenceArtifact(data: InsertReferenceArtifact): ReferenceArtifact;
+  updateReferenceArtifact(id: string, data: Partial<InsertReferenceArtifact>): ReferenceArtifact | undefined;
+  deleteReferenceArtifact(id: string): boolean;
   cloneReferenceArtifact(id: string, workspaceId: string, projectId?: string): SupportMemo;
 
   // Assumptions
@@ -467,6 +470,9 @@ export class DatabaseStorage implements IStorage {
   createReferenceCase(data: InsertReferenceCase) {
     return db.insert(referenceCases).values({ ...data, id: id(), createdAt: now(), updatedAt: now() }).returning().get()!;
   }
+  updateReferenceCase(cId: string, data: Partial<InsertReferenceCase>) {
+    return db.update(referenceCases).set({ ...data, updatedAt: now() }).where(eq(referenceCases.caseId, cId)).returning().get();
+  }
 
   // Reference Artifacts
   getReferenceArtifacts(cId: string) {
@@ -475,6 +481,13 @@ export class DatabaseStorage implements IStorage {
   getReferenceArtifact(artId: string) { return db.select().from(referenceCaseArtifacts).where(eq(referenceCaseArtifacts.id, artId)).get(); }
   createReferenceArtifact(data: InsertReferenceArtifact) {
     return db.insert(referenceCaseArtifacts).values({ ...data, id: id(), createdAt: now(), updatedAt: now() }).returning().get()!;
+  }
+  updateReferenceArtifact(artId: string, data: Partial<InsertReferenceArtifact>) {
+    return db.update(referenceCaseArtifacts).set({ ...data, updatedAt: now() }).where(eq(referenceCaseArtifacts.id, artId)).returning().get();
+  }
+  deleteReferenceArtifact(artId: string) {
+    const result = db.delete(referenceCaseArtifacts).where(eq(referenceCaseArtifacts.id, artId)).run();
+    return result.changes > 0;
   }
   cloneReferenceArtifact(artId: string, workspaceId: string, projectId?: string) {
     const art = this.getReferenceArtifact(artId);
