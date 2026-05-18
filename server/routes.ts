@@ -104,6 +104,46 @@ function fromPlaybookBody(body: Record<string, any>): Record<string, any> {
   return mapped;
 }
 
+function fromPrincipleBody(body: Record<string, any>): Record<string, any> {
+  const mapped: Record<string, any> = { ...body };
+  // Auto-generate slug from title if not provided
+  if (!mapped.slug && mapped.title) {
+    mapped.slug = mapped.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+  }
+  // 'body' field maps directly to the 'body' DB column — no rename needed
+  if (!mapped.scope) mapped.scope = 'workspace';
+  return mapped;
+}
+
+function fromAntipatternsBody(body: Record<string, any>): Record<string, any> {
+  const mapped: Record<string, any> = { ...body };
+  // Auto-generate slug
+  if (!mapped.slug && mapped.title) {
+    mapped.slug = mapped.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+  }
+  // Map frontend field names → DB column names
+  if ('consequence' in body && !mapped.whyItMatters) { mapped.whyItMatters = body.consequence; delete mapped.consequence; }
+  if ('remediation' in body && !mapped.howToFix) { mapped.howToFix = body.remediation; delete mapped.remediation; }
+  // severity has no DB column — store as prefix in warningSigns
+  if (mapped.severity && !mapped.warningSigns) { mapped.warningSigns = `Severity: ${mapped.severity}`; }
+  delete mapped.severity;
+  if (!mapped.scope) mapped.scope = 'workspace';
+  return mapped;
+}
+
+function fromTemplateBody(body: Record<string, any>): Record<string, any> {
+  const mapped: Record<string, any> = { ...body };
+  // Auto-generate slug
+  if (!mapped.slug && mapped.title) {
+    mapped.slug = mapped.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now();
+  }
+  // Map frontend field names → DB column names
+  if ('body' in body && !mapped.promptScaffold) { mapped.promptScaffold = body.body; delete mapped.body; }
+  if ('templateType' in body && !mapped.useCase) { mapped.useCase = body.templateType; delete mapped.templateType; }
+  if (!mapped.scope) mapped.scope = 'workspace';
+  return mapped;
+}
+
 // Report sections: client sends arrays for linked IDs and external links;
 // DB stores them as JSON-encoded text. These helpers serialize/deserialize.
 const REPORT_SECTION_ARRAY_FIELDS = [
@@ -316,7 +356,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── Principles ─────────────────────────────────────────────────────────────
   app.get("/api/principles", (req, res) => { res.json(storage.getPrinciples(req.query.workspaceId as string)); });
   app.post("/api/principles", (req, res) => {
-    const parsed = parseBody(insertPrincipleSchema, req.body);
+    const parsed = parseBody(insertPrincipleSchema, fromPrincipleBody(req.body));
     if ("error" in parsed) return res.status(400).json({ error: parsed.error });
     const p = storage.createPrinciple({ ...parsed.data, createdBy: MOCK_USER.id });
     res.status(201).json(p);
@@ -345,7 +385,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── Anti-Patterns ──────────────────────────────────────────────────────────
   app.get("/api/anti-patterns", (req, res) => { res.json(storage.getAntipatterns()); });
   app.post("/api/anti-patterns", (req, res) => {
-    const parsed = parseBody(insertAntipatternsSchema, req.body);
+    const parsed = parseBody(insertAntipatternsSchema, fromAntipatternsBody(req.body));
     if ("error" in parsed) return res.status(400).json({ error: parsed.error });
     const a = storage.createAntipattern({ ...parsed.data, createdBy: MOCK_USER.id });
     res.status(201).json(a);
@@ -374,7 +414,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── Reasoning Templates ─────────────────────────────────────────────────────
   app.get("/api/reasoning-templates", (req, res) => { res.json(storage.getTemplates(req.query.workspaceId as string)); });
   app.post("/api/reasoning-templates", (req, res) => {
-    const parsed = parseBody(insertTemplateSchema, req.body);
+    const parsed = parseBody(insertTemplateSchema, fromTemplateBody(req.body));
     if ("error" in parsed) return res.status(400).json({ error: parsed.error });
     const t = storage.createTemplate({ ...parsed.data, createdBy: MOCK_USER.id });
     res.status(201).json(t);

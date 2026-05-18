@@ -53,7 +53,7 @@ export default function TemplatesPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.deletePlaybook(id),
+    mutationFn: (id: string) => api.deleteTemplate(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reasoning-templates"] });
       toast({ title: "Template deleted" });
