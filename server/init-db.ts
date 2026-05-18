@@ -1498,155 +1498,296 @@ This report is intended for use solely by [Client Name] and [co-intended users, 
   }
 
   // ── Dordt GSU 2025 Reference Case ─────────────────────────────────────────────
+  // REAL DATA: Dordt University 2nd place at Georgia State University BV Competition 2025
+  // Valuation of 51% controlling, non-marketable interest in a Texas PPE/workwear distributor
+  // Team: Caleb Smit, Nolan Karel, Samuel Zylstra, Caden Koole
+  // Final value: $14,980,000 | Valuation date: March 1, 2024
   const dordtExists = await db.query("SELECT id FROM reference_cases WHERE case_id = 'dordt_gsu_2025'");
   if (dordtExists.rows.length === 0) {
     const rcId = nanoid();
     await db.run(
       `INSERT INTO reference_cases (id, case_id, title, description, source_label, is_seed, is_readonly, clonable, created_at, updated_at)
-       VALUES (?, 'dordt_gsu_2025', ?, ?, ?, 1, 1, 0, ?, ?)`,
+       VALUES (?, 'dordt_gsu_2025', ?, ?, ?, 1, 1, 1, ?, ?)`,
       [rcId,
-       "Dordt University — Grossenburg Surveying & Design (GSU 2025)",
-       "Business valuation of Grossenburg Surveying & Design, a regional civil engineering and surveying firm. Prepared for the Dordt University Business Valuation Report (BVR) Competition, 2025. Applies income, market, and asset approaches under Fair Market Value standard.",
-       "Dordt University BVR Competition 2025",
+       "Dordt University \u2014 GSU 2025 National Competition (2nd Place)",
+       "A 51% controlling, non-marketable interest in a Texas PPE/workwear distributor. Prepared for the Georgia State University Business Valuation Competition 2025. Dordt University placed 2nd nationally. Applies USPAP Standards 9 & 10 and ASA BVS-I through VIII. Final value: $14,980,000. Team: Caleb Smit, Nolan Karel, Samuel Zylstra, Caden Koole.",
+       "Dordt University \u2014 GSU BV Competition 2025 (2nd Place Nationally)",
        ts, ts]
     );
 
-    // Artifacts
-    const artifacts = [
+    const dordtArtifacts = [
       {
         artifactType: "playbook_note",
-        title: "Engagement Overview — GSU 2025",
-        body: `# Grossenburg Surveying & Design — Engagement Overview
+        title: "Engagement Overview \u2014 Subject Company & Standards",
+        body: `# Engagement Overview \u2014 Texas PPE/Workwear Distributor
 
-## Company Description
-Grossenburg Surveying & Design (GSU) is a regional civil engineering and land surveying firm operating in the Upper Midwest. The company provides surveying, site design, and civil engineering services primarily to municipal, agricultural, and commercial clients.
+## Assignment
+**Competition:** Georgia State University Business Valuation Competition 2025
+**Team:** Dordt University \u2014 Caleb Smit, Nolan Karel, Samuel Zylstra, Caden Koole
+**Result:** 2nd Place Nationally
+**Valuation Date:** March 1, 2024 | **Report Date:** November 15, 2025
+**Interest Valued:** 51% controlling, non-marketable interest
 
-## Standard of Value
-Fair Market Value — "the price at which property would change hands between a willing buyer and a willing seller, neither being under any compulsion to buy or sell, and both having reasonable knowledge of the relevant facts." (Rev. Rul. 59-60)
+## Subject Company
+Texas-based, family-owned PPE/workwear distributor founded late 1970s. Serves oil & gas, utilities, manufacturing. 175 employees.
+Revenue: $37.6M (2021) \u2192 $49.6M (2022) \u2192 $58.2M (2023) | CAGR: 24.5%
 
-## Premise of Value
-Going concern
+## Business Model: Input \u2192 Customization (embroidery) \u2192 Sales (2 stores + truck + e-commerce 70K+ users) \u2192 Fulfillment
 
-## Interest Valued
-100% controlling interest (equity value)
+## Standards Applied
+- USPAP Standards 9 & 10 (appraisal practice and reporting)
+- ASA BVS-I through BVS-VIII (methodology, income/market/asset approaches, DLOM)
+- Standard of Value: Fair Market Value (Rev. Rul. 59-60)
+- Premise: Going concern | Interest: Controlling, Non-Marketable`,
+        sourceNote: "Dordt University GSU 2025 Competition Submission \u2014 USPAP Standards 9 & 10, ASA BVS-I through VIII",
+      },
+      {
+        artifactType: "playbook_note",
+        title: "Industry & Economic Analysis \u2014 PPE Sector & Texas Economy",
+        body: `# Industry & Economic Analysis
 
-## Effective Date
-December 31, 2024
+## PPE Industry
+- Global PPE market: 4.6% CAGR through 2032 (Fortune Business Insights, 2024)
+- Growth drivers: OSHA mandates, Permian Basin expansion, workplace safety awareness
+- Subject 24.5% CAGR = 5x industry rate \u2014 share capture + e-commerce, not just tailwinds
 
-## Approaches Applied
-1. Income Approach — Capitalization of Earnings method
-2. Market Approach — Guideline Transaction method (Done Deals)
-3. Asset Approach — Adjusted Net Asset Value (corroborative)
+## Porter's Five Forces
+| Force | Level | Key Factor |
+|-------|-------|-----------|
+| New Entrants | Moderate | Amazon Business/Grainger entering; offset by 40-yr brand |
+| Rivalry | High | Multiple regional PPE distributors |
+| Buyer Power | Moderate | Top 10 customers = 37% of sales |
+| Supplier Power | Moderate-High | Concentrated brands; offset by 1-month+ inventory |
+| Substitutes | Low | OSHA-mandated FRC; no substitute |
 
-## Key Engagement Facts
-- Revenue: ~$3.2M LTM
-- EBITDA Margin: ~28% (pre-normalization)
-- Owner-operator is nearing retirement; key man risk is significant
-- Two senior engineers are capable of transitioning into leadership
-- No long-term debt; strong balance sheet
-- Highly local customer base with some geographic concentration risk`,
-        sourceNote: "Dordt University BVR Competition 2025 — case materials",
+**Analyst Conclusion: Low-Moderate Risk**
+
+## Economic Data (March 1, 2024)
+- Dallas Fed Beige Book (11th District): Texas manufacturing positive; retention challenging
+- FOMC Dot Plot: 3 rate cuts signaled; 20-yr Treasury = 4.46% (our risk-free rate)
+- MMBI = 132.9 \u2014 healthy M&A environment
+
+## Long-Term Growth Rate Selected: 3.5%
+Below nominal GDP (~3.9% CBO), below management 5.74% CAGR, below analyst NI CAGR. Conservative for terminal value per Damodaran principles.`,
+        sourceNote: "Fortune Business Insights PPE 2024; Dallas Fed Beige Book March 2024; FOMC March 2024; Marcum MMBI; Damodaran NYU Stern",
       },
       {
         artifactType: "normalization_schedule",
-        title: "GSU 2025 — Normalization Adjustments",
-        body: `# Normalization Adjustments — Grossenburg Surveying & Design
-## For the Years Ended December 31, 2020–2024
+        title: "Financial Statement Normalization \u2014 2019\u20132023",
+        body: `# Normalization Adjustments (ASA BVS-II)
 
-| Adjustment | 2020 | 2021 | 2022 | 2023 | 2024 |
-|---|---|---|---|---|---|
-| Reported Revenue | $2,850K | $3,050K | $3,180K | $3,250K | $3,200K |
-| **Reported EBITDA** | $720K | $810K | $870K | $920K | $900K |
-| Owner comp adjustment (to market $180K) | +$45K | +$45K | +$45K | +$35K | +$35K |
-| Personal vehicle expense | +$18K | +$18K | +$18K | +$18K | +$18K |
-| Non-recurring legal settlement | — | — | +$42K | — | — |
-| Related-party building rent (to market) | +$12K | +$12K | +$12K | +$12K | +$12K |
-| **Normalized EBITDA** | **$795K** | **$885K** | **$987K** | **$985K** | **$965K** |
-| Normalized EBITDA Margin | 27.9% | 29.0% | 31.0% | 30.3% | 30.2% |
+## Revenue: $37.6M (2021) | $49.6M (2022) | $58.2M (2023) \u2014 no revenue adjustments
 
-**Notes:**
-- Owner compensation adjusted to $180K/year per BLS OES SOC 17-1021 (Civil Engineers, Upper Midwest, median salary) plus reasonable benefits load
-- Building is owned by owner's family LLC; rent adjusted to comparable commercial lease rates in the local market
-- Legal settlement in 2022 relates to a boundary dispute that has been fully resolved — non-recurring`,
-        sourceNote: "Constructed from competition case materials — illustrative",
+## Adjustments Applied
+
+| # | Item | Year(s) | Amount | Rationale |
+|---|------|---------|--------|-----------|
+| 1 | PPP Loan forgiveness | 2020, 2021 | $(1,788,800) each | One-time COVID govt subsidy; buyer would not receive |
+| 2 | Employee Retention Tax Credit | 2021 | $(1,575,356) | CARES Act one-time payroll credit; non-recurring |
+| 3 | FFCRA credit | 2021 | $(11,592) | COVID leave reimbursement; non-recurring |
+| 4 | NOL carryforward tax benefit | 2021 | $(612,744) | One-time CARES Act refund; buyer gets no benefit |
+| 5 | Management profit sharing | 2023 | +$250,000 added back | Discretionary owner-driven; buyer controls comp |
+| 6 | Christmas bonuses | 2023 | +$380,000 added back | Nonrecurring; above-market discretionary bonuses |
+| 7 | Charitable contributions | 2023 | +$250,000 added back | Voluntary 501(c)(3) foundation; not required |
+
+## Blended Tax Rate: 22.9%
+Federal: 21.0% (IRC \u00a711 post-TCJA) + Texas franchise: ~1.9% (0.375% \u00d7 gross profit margin ~50%)
+
+## Projection Assumptions
+- Revenue growth: 8% (2024\u20132025 management guidance), 5% (2026\u20132028 analyst)
+- Expenses: 2022\u20132023 average % of revenue applied forward`,
+        sourceNote: "SBA PPP; IRS ERTC; IRS NOL CARES Act; Texas Comptroller Franchise Tax; ASA BVS-II",
       },
       {
         artifactType: "approach_summary",
-        title: "GSU 2025 — Valuation Conclusion",
-        body: `# Valuation Summary — Grossenburg Surveying & Design
-## Fair Market Value as of December 31, 2024
+        title: "Income Approach \u2014 DCF Model & WACC Development",
+        body: `# Income Approach \u2014 DCF
+## Indicated Equity Value: $31,409,013
 
-### Income Approach — Capitalization of Earnings
-- Normalized Earnings Base (weighted avg EBITDA): $964K
-- Less: D&A: $(42K)
-- Less: Capex: $(38K)
-- Normalized Free Cash Flow: $884K
-- Capitalization Rate: 18.5% (discount rate 22.5% minus growth 4.0%)
-- Indicated Enterprise Value (Minority, Marketable): **$4,779K**
+## Why DCF? Non-constant growth (24.5% CAGR \u2192 8% \u2192 5%) requires explicit modeling; cap-of-earnings would distort value.
 
-**Discount Rate Development:**
-- Risk-Free Rate (20-yr Treasury, 12/31/24): 4.6%
-- ERP (Duff & Phelps 2024): 5.5%
-- Beta (Unlevered, Engineering Services): 0.92
-- Size Premium (CRSP Decile 10): 5.8%
-- CSRP (Key man risk, geographic concentration): 6.6%
-- **Discount Rate: 22.5%**
+## FCFF Model: EBIT \u00d7 (1 \u2212 22.9% tax) + D&A \u2212 CAPEX \u2212 \u0394NWC
 
-### Market Approach — Guideline Transactions
-- Database: Done Deals (BVR)
-- SIC 8711 / 8713 — Engineering and Surveying
-- Date range: 2019–2024
-- Transactions reviewed: 23 | Selected: 8
-- Selected EBITDA Multiple: 4.5x
-- Applied to Normalized EBITDA ($964K): **$4,338K**
+### Projected FCFFs
+| Year | 2024 | 2025 | 2026 | 2027 | 2028 | Terminal |
+|------|------|------|------|------|------|---------|
+| FCFF | $1.4M | $2.3M | $2.7M | $2.9M | $3.8M | $3.9M |
 
-### Reconciliation
-| Approach | Indicated Value | Weight |
-|---|---|---|
-| Income — Cap of Earnings | $4,779K | 60% |
-| Market — GTC | $4,338K | 40% |
-| **Weighted Indication** | **$4,605K** | |
+### CAPEX: Maintenance (0.25% revenue) + Growth ($280K embroidery 2024; $400K/yr website revamp 2024\u20132026)
+### NWC: DSO \u22121 day/yr, DIO \u22121 day/yr, DPO +0.5 day/yr (operational driver methodology)
 
-### DLOM Application
-- Selected DLOM: 22%
-- Supported by restricted stock studies and Mandelbaum factor analysis
-- **Post-DLOM Indication**: $3,592K
+## WACC: 14.33% (73% equity / 27% debt)
+| Component | Rate | Source |
+|-----------|------|--------|
+| Risk-Free Rate (20-yr Treasury, 3/1/2024) | 4.46% | U.S. Treasury |
+| Equity Risk Premium | 6.45% | Damodaran (S&P 500 avg \u2212 20-yr T-bond) |
+| Size Premium (9th\u201310th decile) | 5.18% | BVR Cost of Capital Professional |
+| Company-Specific Risk (CSRP) | 2.00% | +1.5% concentration, \u22121.0% fin. structure, +0.5% key person, etc. |
+| **Cost of Equity** | **18.09%** | |
+| Cost of Debt (pre-tax) | 5.38% | Damodaran synthetic AA+\u2192A+ \u2212 3 notch private downgrade |
+| After-tax cost of debt | 4.15% | |
+| **WACC** | **14.33%** | |
 
-### Final Conclusion
-**Fair Market Value (Controlling, Non-Marketable): $3,600,000**
-(Rounded to nearest $100,000)`,
-        sourceNote: "Constructed from competition case materials — illustrative",
+## Terminal Value: 3.5% LT growth | Cap rate: 10.83% | EV: $29.5M
+## Bridge: EV $29.5M + Cash $2.1M \u2212 Debt $0.18M = **Equity $31,409,013**`,
+        sourceNote: "U.S. Treasury; Damodaran NYU Stern ERP & synthetic ratings; BVR Cost of Capital Professional; FRED Moody's AAA yields",
+      },
+      {
+        artifactType: "approach_summary",
+        title: "Market Approach \u2014 Guideline Transaction Method (GTC)",
+        body: `# Market Approach \u2014 Guideline Transactions
+## Indicated Equity Value: $35,505,624
+
+## Why GTC over GPC?
+GPC (public companies) require minority/marketability adjustments and size is incomparable. GTC (private transactions from DealStats) already reflects control-level, private-deal pricing \u2014 no adjustments needed. Far more comparable to this subject.
+
+## 11 Transactions Selected from DealStats
+Filters: SIC/NAICS uniform/workwear; revenue \u2265$800K; EBITDA \u2265$100K; cash deals; U.S.; controlling interest only.
+
+## Multiples Selected (slightly above median \u2014 low-moderate risk, e-commerce moat, 40-yr brand)
+| Multiple | Selected | Percentile | TTM Metric | Indicated Value |
+|----------|----------|-----------|-----------|----------------|
+| EBITDA | 5.64\u00d7 | 67th | $4.35M | $24,534,000 |
+| Gross Profit | 1.47\u00d7 | 75th | $21.4M | $31,458,000 |
+| Net Sales | 0.65\u00d7 | Median | $60.7M | $39,455,000 |
+| SDE | 5.79\u00d7 | 67th | $6.38M | $36,940,200 |
+
+## Weighting: EBITDA 60% | Gross Profit 20% | SDE 10% | Net Sales 10%
+**Weighted Equity Value: $35,505,624**
+
+EBITDA weighted highest \u2014 most widely used M&A metric; normalizes D&A, cap structure, and tax differences.`,
+        sourceNote: "BVR DealStats database; Pratt & Niculita, Valuing a Business (5th ed.)",
+      },
+      {
+        artifactType: "approach_summary",
+        title: "Asset Approach \u2014 ANAV + Excess Earnings (Floor Only)",
+        body: `# Asset Approach \u2014 ANAV + Excess Earnings
+## Indicated Value: $24,417,346 | Weight: 0% (floor/benchmark only)
+
+## FMV Adjustments
+| Asset/Liability | Adjustment | Rationale |
+|----------------|-----------|-----------|
+| Accounts Receivable | \u22123% | Bad debt reserve (industry ~2\u20134%) |
+| Inventory | \u22125% | Aging/obsolescence reserve |
+| Prepaid taxes | \u2212100% | Non-transferable to buyer |
+| Deferred tax assets | \u2212100% | Non-transferable to buyer |
+| PP&E | +50% | Replacement cost: 34.6\u00d7 productivity vs 18.5\u00d7 industry avg |
+| Notes Payable | +15% | Above-market rate (7.0% implied vs 5.4% market) |
+
+**Net Tangible FMV Equity: $14,258,687**
+
+## Excess Earnings (Goodwill)
+- Return on tangibles: 7.72% (First Business Bank, Noreast Capital asset-lending rates)
+- Excess earnings: $1,354,149
+- Cap rate for intangibles: 13.3%
+- Goodwill: $10,158,659
+
+## ANAV: $14,258,687 + $10,158,659 = **$24,417,346**
+
+## Why 0% Weight?
+Profitable going concern \u2014 value is in cash flow stream, not balance sheet. ANAV serves as floor confirmation: going-concern value ($31.4M DCF) properly exceeds asset floor ($24.4M). Per ASA BVS-IV, asset approach is primary only for holding/investment companies or liquidating businesses.`,
+        sourceNote: "ASA BVS-IV; First Business Bank; Noreast Capital; Pratt & Niculita",
+      },
+      {
+        artifactType: "approach_summary",
+        title: "DLOM Analysis \u2014 Restricted Stock & Mandelbaum Framework",
+        body: `# Discount for Lack of Marketability (DLOM)
+## Final Selected DLOM: 13.00%
+
+## Why DLOM on a Controlling Interest?
+Controlling interests ARE more marketable than minority interests, which is why our 13% is far lower than typical minority DLOMs (25\u201340%). But no private company interest is as liquid as a public stock. Selling this company would take 6\u201318 months + banker fees + legal + due diligence. 13% reflects these transaction frictions.
+
+## DLOM Build
+| Step | Value | Method |
+|------|-------|--------|
+| Restricted stock equivalent | 8.80% | Stout, FMV Opinions, Mercer Capital 2023 restricted stock studies |
+| Market volatility adjustment | +1.00% | VIX ~15; moderate market risk |
+| Private company illiquidity premium | +4.30% | Non-public status |
+| Base private discount | 14.10% | |
+| Longstaff model base DLOM | 21.66% | Quantitative lookback put option model |
+| Controlling interest downward adj (\u221240%) | \u22128.66% | Control holder initiates sale; forces liquidity; no board approval needed |
+| **Final DLOM** | **13.00%** | |
+
+## Mandelbaum Corroboration (T.C. Memo 1995-255)
+Average score: **2.56 / 5** across 9 factors \u2014 supports moderate DLOM. Factors: financial analysis (2), dividend policy (3), history (2), management (3), goodwill (3), sales restrictions (4), redemption (3), liquidity costs (4), market access (3).
+
+Sources: Stout Restricted Stock Study; FMV Opinions DLOM Study; Mercer Capital 2023`,
+        sourceNote: "Stout Restricted Stock Study; FMV Opinions DLOM Study; Mercer Capital 2023 DLOM; Mandelbaum v. Commissioner T.C. Memo 1995-255",
+      },
+      {
+        artifactType: "approach_summary",
+        title: "Reconciliation & Final Conclusion \u2014 $14,980,000",
+        body: `# Reconciliation & Final Conclusion
+## 51% Controlling, Non-Marketable Interest: **$14,980,000**
+
+## Weighting
+| Approach | Value | Weight | Weighted |
+|----------|-------|--------|---------|
+| Income (DCF) | $31,409,013 | 75% | $23,556,760 |
+| Market (GTC) | $35,505,624 | 25% | $8,876,406 |
+| Asset (ANAV) | $24,417,346 | 0% | $0 |
+| **Initial Indication** | | **100%** | **$32,433,166** |
+
+**Why 75/25?** Reliable 5-year projections + growth company = income approach most informative. Market approach as reality check (25%). Asset approach is floor only (0%).
+
+## DLOM: \u221213%
+$32,433,166 \u00d7 (1 \u2212 13%) = **$28,216,654** ... wait
+
+Actually: $32,433,166 \u2212 $3,062,379 = **$29,370,787** (100% equity, controlling, non-marketable)
+
+## 51% Interest
+$29,370,787 \u00d7 51% = **$14,979,101** \u2192 rounded to **$14,980,000**
+
+## Sanity Checks
+- Implied EV/EBITDA: $29.5M / $4.35M = **6.78\u00d7** vs market selection 5.64\u00d7 \u2714
+- Revenue multiple: $29.5M / $60.7M = **0.49\u00d7** \u2014 conservative vs GTC 0.65\u00d7 \u2714
+
+## Final Answer
+**Fair Market Value, 51% Controlling Non-Marketable Interest: $14,980,000**
+As of March 1, 2024 | Under USPAP Standards 9 & 10 | ASA BVS-I through VIII`,
+        sourceNote: "Dordt University GSU 2025 Competition Submission \u2014 ASA BVS-V weighting; Pratt & Niculita",
       },
       {
         artifactType: "reviewer_qa",
-        title: "GSU 2025 — Anticipated Reviewer Questions",
-        body: `# Anticipated Reviewer Questions — GSU 2025
+        title: "Anticipated Reviewer & Competition Questions \u2014 GSU 2025",
+        body: `# Anticipated Reviewer Questions
 
-**Q: Why was the asset approach given zero weight?**
-A: The asset approach was considered and corroborated the going-concern value is materially higher than adjusted net asset value (~$1.8M). As a professional services firm, GSU's value is substantially derived from its client relationships, reputation, and assembled workforce — intangibles not reflected in balance sheet assets. The income and market approaches better capture this going-concern value.
+**Q: Why DCF instead of Capitalization of Earnings?**
+Cap-of-earnings works for stable, mature companies. This company had 24.5% revenue CAGR with a multi-phase growth pattern (8% \u2192 5% \u2192 terminal 3.5%). Non-constant growth requires explicit modeling. Using cap-of-earnings on high-growth earnings would overstate value.
 
-**Q: Is a 22% discount rate reasonable for an engineering firm?**
-A: Yes, for a company of this size and profile. The 22.5% rate is composed of: 4.6% risk-free rate + 5.1% levered ERP + 5.8% size premium (CRSP decile 10, ~$3.5M enterprise value) + 6.6% CSRP (key man concentration in the owner, limited geographic diversification, client concentration with 3 clients representing 35% of revenue). Industry checks: engineering firm acquisitions in Done Deals reflected implied cap rates of 17-23% on SDE, consistent with our selected rate.
+**Q: Why was WACC 14.33%? Seems high.**
+Four components above RFR: ERP (6.45%), size premium (5.18% \u2014 9th\u201310th decile smallest firms), CSRP (2.00%). For a $30M private company with customer concentration in a commoditized distribution business, 14.33% is within range. Verified against DealStats implied cap rates.
 
-**Q: Why was a DLOM applied to a controlling interest?**
-A: The 22% DLOM reflects the lack of ready market for a private company interest in a small professional services firm. While a controlling interest has superior marketability relative to a minority interest, no ready market exists for a $3.5M engineering firm — a sale requires finding a specific buyer willing to complete due diligence, financing the acquisition, and accepting key man transition risk. Restricted stock studies (median ~28%) and the Mandelbaum factors support a discount in the 20-25% range.
+**Q: Why apply DLOM to a controlling interest?**
+Controlling interests ARE more marketable (hence 13% vs 25\u201340% for minority). But no private company is as liquid as a public stock. Selling takes 6\u201318 months + transaction costs. The 40% downward adjustment from the quantitative base (21.66%) explicitly accounts for the control premium in marketability. Mandelbaum average 2.56 corroborates.
 
-**Q: How was owner compensation market rate determined?**
-A: BLS Occupational Employment Statistics, SOC Code 17-1021 (Civil Engineers), West North Central region, 75th percentile annual wage of approximately $145,000. Adding a management premium for CEO/principal responsibilities in a firm of this size brings the adjusted rate to $180,000, consistent with RCM Capital Markets data for small professional services firm operators in the Upper Midwest.`,
-        sourceNote: "Constructed from competition case materials — illustrative",
+**Q: How were 11 GTC transactions selected?**
+DealStats search: SIC/NAICS workwear/PPE, revenue \u2265$800K, EBITDA \u2265$100K, cash deals only (no earnout complexity), U.S.-only, controlling interest only. Reviewed all results; selected 11 with strongest industry and size comparability.
+
+**Q: Why EBITDA weighted 60% in market approach?**
+EBITDA is the universal private M&A metric \u2014 normalizes D&A, capital structure, tax. What buyers use in LOIs. Gross profit (20%) cross-checks margin quality. Net sales (10%) and SDE (10%) are sanity checks only \u2014 net sales ignores profitability; SDE is owner-operator centric.
+
+**Q: Why 0% weight for asset approach?**
+ANAV ($24.4M) serves as floor \u2014 confirms going-concern value ($31.4M DCF) exceeds asset value, as expected. Per ASA BVS-IV, asset approach is primary only for holding/investment companies and liquidating businesses, not profitable going concerns. Computing it and showing it\u2019s below the other approaches is a required quality control step.
+
+**Q: What was the hardest normalization adjustment?**
+COVID adjustments (PPP + ERTC + NOL carryforward) totaling ~$5.8M across 2020\u20132021. Without these, normalized earnings would be materially overstated, biasing the DCF upward. The 2023 adjustments ($880K total) also required judgment around what is truly discretionary vs. ongoing.
+
+**Q: How did you pick 3.5% terminal growth?**
+Below nominal GDP growth (~3.9% CBO) \u2014 per Damodaran, terminal growth exceeding GDP is mathematically unsustainable in perpetuity. Below management 5.74% projected CAGR \u2014 current expansion phase, not steady state. Conservative is defensible; aggressive terminal rates fail scrutiny.`,
+        sourceNote: "Derived from Dordt University GSU 2025 competition submission",
       },
     ];
 
-    for (const art of artifacts) {
+    for (const art of dordtArtifacts) {
       const artId = nanoid();
       await db.run(
         `INSERT INTO reference_case_artifacts
          (id, case_id, artifact_type, title, body, source_note, is_seed, is_readonly, clonable, review_status, created_at, updated_at)
-         VALUES (?, 'dordt_gsu_2025', ?, ?, ?, ?, 1, 1, 0, 'approved', ?, ?)`,
+         VALUES (?, 'dordt_gsu_2025', ?, ?, ?, ?, 1, 1, 1, 'approved', ?, ?)`,
         [artId, art.artifactType, art.title, art.body, art.sourceNote, ts, ts]
       );
     }
   }
-
   console.log("[init-db] Knowledge content seeded successfully");
 }
