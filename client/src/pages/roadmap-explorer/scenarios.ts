@@ -181,6 +181,50 @@ export const SCENARIOS: Scenario[] = [
     category: "income",
   },
   {
+    name: "Buy-sell agreement trigger (shareholder exit)",
+    decisionSignals: [
+      "Valuation triggered by a buy-sell agreement event",
+      "Death, disability, retirement, voluntary withdrawal, divorce, or dispute among owners",
+      "Agreement specifies a standard of value, valuation date, and method",
+    ],
+    recommended: [
+      "Follow the standard of value, valuation date, and level of value the agreement dictates — the contract controls, not analyst preference.",
+      "Income and/or market approach to the equity interest defined by the agreement; apply DLOC/DLOM only if the agreement's standard of value calls for them.",
+    ],
+    criticalSequencing:
+      "Read the agreement FIRST. It may define fair market value, fair value, or a formula/agreed price; it may specify whether discounts apply; and the triggering event may change the standard (e.g., death vs. voluntary withdrawal). The trigger and the contract language drive the engagement.",
+    watchOuts: [
+      "Different triggers can carry different terms — death, disability, retirement, termination-for-cause, and divorce may each specify different prices, discounts, or payment terms in the same agreement.",
+      "Personal vs. enterprise goodwill is often central (especially divorce and owner-dispute triggers) — see the Personal vs. Enterprise Goodwill method card.",
+      "Watch for a stale formula price or an agreement that names a standard of value inconsistent with how the analyst would otherwise proceed; flag conflicts rather than silently overriding the contract.",
+      "Key person and customer-concentration risk frequently spike at the trigger (the departing owner may BE the key person) — assess earnings quality and key person discount accordingly.",
+    ],
+    borderColor: "border-l-green-500",
+    category: "market",
+  },
+  {
+    name: "Distressed / financially troubled company",
+    decisionSignals: [
+      "Material probability of business failure or insolvency",
+      "Rapidly changing or unsustainable capital structure",
+      "Low interest coverage; covenant pressure or going-concern doubt",
+    ],
+    recommended: [
+      "Scenario-weighted enterprise value (turnaround / survival / liquidation), each valued independently and probability-weighted.",
+      "APV for survival scenarios when leverage is changing rapidly or the tax shield is uncertain; ANAV / liquidation value for the failure scenario.",
+    ],
+    criticalSequencing:
+      "Decide where distress risk lives — in the scenario probabilities OR in the discount rate, never both. Reconcile the chosen probabilities with the credit spread the interest-coverage ratio implies (very low coverage maps to Damodaran's widest spreads).",
+    watchOuts: [
+      "A single static WACC plus a going-concern perpetuity can badly misstate value when failure is a real outcome — capture the bimodal payoff with scenarios.",
+      "Liquidation value: orderly (12–18 months) realizes more than forced/auction. Document the assumed timeline.",
+      "Do not load both heavily distressed probabilities AND an extreme distress-loaded discount rate inside each scenario — that double-counts the same risk.",
+      "ANAV is typically the floor — if a going-concern income result falls below liquidation value, revisit the income approach.",
+    ],
+    borderColor: "border-l-amber-500",
+    category: "asset",
+  },
+  {
     name: "Pre-revenue or early-stage startup",
     decisionSignals: [
       "No revenue",
